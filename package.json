@@ -23,8 +23,6 @@
     "build": "rollup -c && sed '$d;N;$d' dist/paas-client.browser.plain.js > dist/paas-client.browser.plain.js.tmp && echo '})\nexport default PaaSClient;' >> dist/paas-client.browser.plain.js.tmp && mv dist/paas-client.browser.plain.js.tmp dist/paas-client.browser.plain.js",
     "format": "prettier --write .",
     "lint": "eslint --fix",
-    "prepublishOnly": "npm run build && cp README.md README.md",
-    "postpublish": "rm README.md",
     "test": "npm run build && NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "authors": [
