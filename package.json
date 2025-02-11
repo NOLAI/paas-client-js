@@ -2,6 +2,10 @@
   "name": "@nolai/paas-client",
   "version": "0.5.7",
   "description": "PEP Authorization API Service client",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NOLAI/paas-client-js.git"
+  },
   "type": "module",
   "main": "dist/paas-client.js",
   "exports": {
