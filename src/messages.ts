@@ -1,39 +1,44 @@
 export type PseudonymizationDomain = string;
 
+export interface VersionInfo {
+  protocol_version: string;
+  min_supported_version: string;
+}
 export interface StatusResponse {
-    timestamp: string;
-    system_id: string;
+  timestamp: string;
+  system_id: string;
+  version_info: VersionInfo;
 }
 
 export interface StartSessionResponse {
-    session_id: string;
-    key_share: string;
+  session_id: string;
+  key_share: string;
 }
 
 export interface GetSessionResponse {
-    sessions: string[];
+  sessions: string[];
 }
 
 export interface PseudonymizationResponse {
-    encrypted_pseudonym: string;
+  encrypted_pseudonym: string;
 }
 
 export interface PseudonymizationRequest {
-    encrypted_pseudonym: string;
-    domain_from: string;
-    domain_to: string;
-    session_from: string;
-    session_to: string;
+  encrypted_pseudonym: string;
+  domain_from: string;
+  domain_to: string;
+  session_from: string;
+  session_to: string;
 }
 
 export interface PseudonymizationBatchRequest {
-    encrypted_pseudonyms: string[];
-    domain_from: string;
-    domain_to: string;
-    session_from: string;
-    session_to: string;
+  encrypted_pseudonyms: string[];
+  domain_from: string;
+  domain_to: string;
+  session_from: string;
+  session_to: string;
 }
 
 export interface PseudonymizationBatchResponse {
-    encrypted_pseudonyms: string[];
+  encrypted_pseudonyms: string[];
 }

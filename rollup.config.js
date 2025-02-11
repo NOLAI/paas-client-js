@@ -57,11 +57,13 @@ export default defineConfig([
   // Type definitions bundle
   {
     input: "src/index.ts",
-    output: [{
-      file: "dist/paas-client.d.ts",
-      format: "es"
-    }],
+    output: [
+      {
+        file: "dist/paas-client.d.ts",
+        format: "es",
+      },
+    ],
     plugins: [dts()],
-    external: ["@nolai/libpep-wasm"]
-  }
+    external: ["@nolai/libpep-wasm"],
+  },
 ]);

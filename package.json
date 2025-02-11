@@ -1,6 +1,6 @@
 {
   "name": "@nolai/paas-client",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "description": "PEP Authorization API Service client",
   "type": "module",
   "main": "dist/paas-client.js",
