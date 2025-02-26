@@ -25,7 +25,7 @@ import {
   TranscryptionRequest,
   TranscryptionResponse
 } from "./messages.js";
-import {PseudonymServiceError} from "./psuedonym_service.js";
+import {PseudonymServiceError} from "./pseudonym_service.js";
 
 /**
  * Enum representing the state of a transcryptor
@@ -274,9 +274,9 @@ export class TranscryptorClient {
       this.status = new TranscryptorStatus(TranscryptorState.ONLINE, Date.now());
 
       // Check system ID match
-      if (status.system_id !== this.config.systemId) {
+      if (status.system_id !== this.config.system_id) {
         throw TranscryptorError.inconsistentSystemName(
-            this.config.systemId,
+            this.config.system_id,
             status.system_id
         );
       }
@@ -284,9 +284,9 @@ export class TranscryptorClient {
       // Check version compatibility
       const clientVersion = {
         // eslint-disable-next-line camelcase
-        protocol_version: "1.0.0",
+        protocol_version: "0.3.0",
         // eslint-disable-next-line camelcase
-        min_supported_version: "1.0.0"
+        min_supported_version: "0.3.0"
       } as VersionInfo;
 
       if (!this.isCompatibleVersion(status.version_info, clientVersion)) {
@@ -331,11 +331,11 @@ export class TranscryptorClient {
 
       // Find this transcryptor in the config
       const transcryptorConfig = config.transcryptors.find(
-          (tc) => tc.systemId === this.config.systemId
+          (tc) => tc.system_id === this.config.system_id
       );
 
       if (!transcryptorConfig) {
-        throw TranscryptorError.invalidSystemName(this.config.systemId);
+        throw TranscryptorError.invalidSystemName(this.config.system_id);
       }
 
       // Check URL consistency
@@ -349,7 +349,7 @@ export class TranscryptorClient {
 
       if (clientsideConfig.blinded_global_secret_key !== config.blinded_global_secret_key ||
           clientsideConfig.global_public_key !== config.global_public_key) {
-        throw PseudonymServiceError.inconsistentConfig(transcryptorConfig.systemId);
+        throw PseudonymServiceError.inconsistentConfig(transcryptorConfig.system_id);
       }
 
       return config;
@@ -672,7 +672,7 @@ export class TranscryptorClient {
    * Get the system ID
    */
   getSystemId(): SystemId {
-    return this.config.systemId;
+    return this.config.system_id;
   }
 
   /**

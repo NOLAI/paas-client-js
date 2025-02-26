@@ -144,9 +144,9 @@ export class PseudonymService {
 
     // Create all transcryptors
     const transcryptorPromises = config.transcryptors.map(async (tc) => {
-      const auth = auths.get(tc.systemId);
+      const auth = auths.get(tc.system_id);
       if (!auth) {
-        throw PseudonymServiceError.missingAuth(tc.systemId);
+        throw PseudonymServiceError.missingAuth(tc.system_id);
       }
 
       try {
@@ -184,19 +184,19 @@ export class PseudonymService {
 
     // Restore all transcryptors
     const transcryptorPromises = config.transcryptors.map(async (tc) => {
-      const auth = auths.get(tc.systemId);
+      const auth = auths.get(tc.system_id);
       if (!auth) {
-        throw PseudonymServiceError.missingAuth(tc.systemId);
+        throw PseudonymServiceError.missingAuth(tc.system_id);
       }
 
-      const sessionId = sessionIds.get(tc.systemId);
+      const sessionId = sessionIds.get(tc.system_id);
       if (!sessionId) {
-        throw PseudonymServiceError.missingSession(tc.systemId);
+        throw PseudonymServiceError.missingSession(tc.system_id);
       }
 
-      const keyShare = sessionKeyShares[tc.systemId];
+      const keyShare = sessionKeyShares[tc.system_id];
       if (!keyShare) {
-        throw PseudonymServiceError.missingSessionKeyShare(tc.systemId);
+        throw PseudonymServiceError.missingSessionKeyShare(tc.system_id);
       }
 
       try {

@@ -4,7 +4,7 @@ export {
   PseudonymServiceErrorType,
   SessionKeyShares,
   PseudonymServiceDump
-} from "./psuedonym_service.js";
+} from "./pseudonym_service.js";
 export{
   CallbackAuth,
   BearerTokenAuth,
