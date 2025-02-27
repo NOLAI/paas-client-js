@@ -8,3 +8,5 @@ tests/coverage/
 .idea
 .vscode
 .aider*
+
+.DS_Store
