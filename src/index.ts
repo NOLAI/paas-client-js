@@ -3,26 +3,23 @@ export {
   PseudonymServiceError,
   PseudonymServiceErrorType,
   SessionKeyShares,
-  PseudonymServiceDump
+  PseudonymServiceDump,
 } from "./pseudonym_service.js";
-export{
+export {
   CallbackAuth,
   BearerTokenAuth,
   TokenCallback,
   Auth,
-  SystemAuths
+  SystemAuths,
 } from "./auth.js";
 export {
   TranscryptorClient,
   TranscryptorError,
   TranscryptorErrorType,
   TranscryptorState,
-  TranscryptorStatus
+  TranscryptorStatus,
 } from "./transcryptor_client.js";
-export {
-  TranscryptorConfig,
-  PAASConfig,
-} from "./config.js";
+export { TranscryptorConfig, PAASConfig } from "./config.js";
 export {
   EncryptionContexts,
   SystemId,
@@ -47,5 +44,5 @@ export {
   TranscryptionRequest,
   TranscryptionResponse,
   EncryptedEntityData,
-  EncryptedEntityDataJson
+  EncryptedEntityDataJson,
 } from "./messages.js";

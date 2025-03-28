@@ -1,13 +1,13 @@
 import {
   EncryptedDataPoint,
   EncryptedPseudonym,
-  SessionKeyShare
+  SessionKeyShare,
 } from "@nolai/libpep-wasm";
 
 import { PseudonymizationDomain, EncryptedEntityData } from "./messages.js";
 import { EncryptionContext, SystemId } from "./sessions.js";
-import {PAASConfig, TranscryptorConfig} from "./config.js";
-import {Auth} from "./auth.js";
+import { PAASConfig, TranscryptorConfig } from "./config.js";
+import { Auth } from "./auth.js";
 import {
   VersionInfo,
   StatusResponse,
@@ -23,9 +23,9 @@ import {
   RekeyBatchRequest,
   RekeyBatchResponse,
   TranscryptionRequest,
-  TranscryptionResponse
+  TranscryptionResponse,
 } from "./messages.js";
-import {PseudonymServiceError} from "./pseudonym_service.js";
+import { PseudonymServiceError } from "./pseudonym_service.js";
 
 /**
  * Enum representing the state of a transcryptor
@@ -34,7 +34,7 @@ export enum TranscryptorState {
   UNKNOWN = "unknown",
   ONLINE = "online",
   OFFLINE = "offline",
-  ERROR = "error"
+  ERROR = "error",
 }
 
 /**
@@ -65,7 +65,7 @@ export enum TranscryptorErrorType {
   IncompatibleClientVersion = "IncompatibleClientVersion",
   InconsistentSystemName = "InconsistentSystemName",
   InvalidSystemName = "InvalidSystemName",
-  InconsistentConfig = "InconsistentConfig"
+  InconsistentConfig = "InconsistentConfig",
 }
 
 /**
@@ -75,7 +75,11 @@ export class TranscryptorError extends Error {
   type: TranscryptorErrorType;
   details?: Record<string, string>;
 
-  constructor(type: TranscryptorErrorType, message: string, details?: Record<string, string>) {
+  constructor(
+    type: TranscryptorErrorType,
+    message: string,
+    details?: Record<string, string>,
+  ) {
     super(message);
     this.type = type;
     this.details = details;
@@ -91,58 +95,86 @@ export class TranscryptorError extends Error {
   }
 
   static unauthorized(): TranscryptorError {
-    return new TranscryptorError(TranscryptorErrorType.Unauthorized, "Authentication required");
-  }
-
-  static notAllowed(reason: string): TranscryptorError {
-    return new TranscryptorError(TranscryptorErrorType.NotAllowed, `Transcryption not allowed: ${reason}`);
-  }
-
-  static invalidSession(reason: string): TranscryptorError {
-    return new TranscryptorError(TranscryptorErrorType.InvalidSession, `Invalid or expired session: ${reason}`);
-  }
-
-  static badRequest(reason: string): TranscryptorError {
-    return new TranscryptorError(TranscryptorErrorType.BadRequest, `Bad request: ${reason}`);
-  }
-
-  static serverError(reason: string): TranscryptorError {
-    return new TranscryptorError(TranscryptorErrorType.ServerError, `Server error: ${reason}`);
-  }
-
-  static noSessionToEnd(): TranscryptorError {
-    return new TranscryptorError(TranscryptorErrorType.NoSessionToEnd, "No active session to end");
-  }
-
-  static incompatibleClientVersion(clientVersion: string, serverVersion: string, minSupportedVersion: string): TranscryptorError {
     return new TranscryptorError(
-        TranscryptorErrorType.IncompatibleClientVersion,
-        `Client version ${clientVersion} is incompatible with server version ${serverVersion} (min. supported version ${minSupportedVersion})`,
-        { clientVersion, serverVersion, minSupportedVersion }
+      TranscryptorErrorType.Unauthorized,
+      "Authentication required",
     );
   }
 
-  static inconsistentSystemName(configuredName: string, respondedName: string): TranscryptorError {
+  static notAllowed(reason: string): TranscryptorError {
     return new TranscryptorError(
-        TranscryptorErrorType.InconsistentSystemName,
-        `Inconsistent system name (configured: ${configuredName}, responded: ${respondedName})`,
-        { configuredName, respondedName }
+      TranscryptorErrorType.NotAllowed,
+      `Transcryption not allowed: ${reason}`,
+    );
+  }
+
+  static invalidSession(reason: string): TranscryptorError {
+    return new TranscryptorError(
+      TranscryptorErrorType.InvalidSession,
+      `Invalid or expired session: ${reason}`,
+    );
+  }
+
+  static badRequest(reason: string): TranscryptorError {
+    return new TranscryptorError(
+      TranscryptorErrorType.BadRequest,
+      `Bad request: ${reason}`,
+    );
+  }
+
+  static serverError(reason: string): TranscryptorError {
+    return new TranscryptorError(
+      TranscryptorErrorType.ServerError,
+      `Server error: ${reason}`,
+    );
+  }
+
+  static noSessionToEnd(): TranscryptorError {
+    return new TranscryptorError(
+      TranscryptorErrorType.NoSessionToEnd,
+      "No active session to end",
+    );
+  }
+
+  static incompatibleClientVersion(
+    clientVersion: string,
+    serverVersion: string,
+    minSupportedVersion: string,
+  ): TranscryptorError {
+    return new TranscryptorError(
+      TranscryptorErrorType.IncompatibleClientVersion,
+      `Client version ${clientVersion} is incompatible with server version ${serverVersion} (min. supported version ${minSupportedVersion})`,
+      { clientVersion, serverVersion, minSupportedVersion },
+    );
+  }
+
+  static inconsistentSystemName(
+    configuredName: string,
+    respondedName: string,
+  ): TranscryptorError {
+    return new TranscryptorError(
+      TranscryptorErrorType.InconsistentSystemName,
+      `Inconsistent system name (configured: ${configuredName}, responded: ${respondedName})`,
+      { configuredName, respondedName },
     );
   }
 
   static invalidSystemName(name: string): TranscryptorError {
     return new TranscryptorError(
-        TranscryptorErrorType.InvalidSystemName,
-        `Invalid system name (${name})`,
-        { name }
+      TranscryptorErrorType.InvalidSystemName,
+      `Invalid system name (${name})`,
+      { name },
     );
   }
 
-  static inconsistentConfig(configuredUrl: string, respondedUrl: string): TranscryptorError {
+  static inconsistentConfig(
+    configuredUrl: string,
+    respondedUrl: string,
+  ): TranscryptorError {
     return new TranscryptorError(
-        TranscryptorErrorType.InconsistentConfig,
-        `Inconsistent configuration (configured: ${configuredUrl}, responded: ${respondedUrl})`,
-        { configuredUrl, respondedUrl }
+      TranscryptorErrorType.InconsistentConfig,
+      `Inconsistent configuration (configured: ${configuredUrl}, responded: ${respondedUrl})`,
+      { configuredUrl, respondedUrl },
     );
   }
 }
@@ -177,7 +209,10 @@ export class TranscryptorClient {
   /**
    * Create and initialize a new TranscryptorClient
    */
-  static async new(config: TranscryptorConfig, auth: Auth): Promise<TranscryptorClient> {
+  static async new(
+    config: TranscryptorConfig,
+    auth: Auth,
+  ): Promise<TranscryptorClient> {
     const client = new TranscryptorClient(config, auth);
     await client.checkStatus();
     return client;
@@ -187,10 +222,10 @@ export class TranscryptorClient {
    * Restore a TranscryptorClient from saved state
    */
   static async restore(
-      config: TranscryptorConfig,
-      auth: Auth,
-      sessionId: EncryptionContext,
-      keyShare: SessionKeyShare
+    config: TranscryptorConfig,
+    auth: Auth,
+    sessionId: EncryptionContext,
+    keyShare: SessionKeyShare,
   ): Promise<TranscryptorClient> {
     const client = new TranscryptorClient(config, auth);
     client.sessionId = sessionId;
@@ -203,7 +238,7 @@ export class TranscryptorClient {
    * Get the full URL for an API endpoint
    */
   private makeUrl(path: string): string {
-    return `${this.config.url.replace(/\/$/, '')}${this.apiBasePath}${path}`;
+    return `${this.config.url.replace(/\/$/, "")}${this.apiBasePath}${path}`;
   }
 
   /**
@@ -242,14 +277,18 @@ export class TranscryptorClient {
         case 504:
           throw TranscryptorError.serverError(errorMessage);
         default:
-          throw TranscryptorError.networkError(`Unexpected HTTP status ${status}: ${errorMessage}`);
+          throw TranscryptorError.networkError(
+            `Unexpected HTTP status ${status}: ${errorMessage}`,
+          );
       }
     }
 
     try {
-      return await response.json() as T;
+      return (await response.json()) as T;
     } catch (error) {
-      throw TranscryptorError.networkError(`Failed to parse JSON response: ${(error as Error).message}`);
+      throw TranscryptorError.networkError(
+        `Failed to parse JSON response: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -262,22 +301,25 @@ export class TranscryptorClient {
 
       if (!response.ok) {
         this.status = new TranscryptorStatus(
-            response.status === 404
-                ? TranscryptorState.OFFLINE
-                : TranscryptorState.ERROR,
-            Date.now()
+          response.status === 404
+            ? TranscryptorState.OFFLINE
+            : TranscryptorState.ERROR,
+          Date.now(),
         );
         return;
       }
 
       const status = await this.processResponse<StatusResponse>(response);
-      this.status = new TranscryptorStatus(TranscryptorState.ONLINE, Date.now());
+      this.status = new TranscryptorStatus(
+        TranscryptorState.ONLINE,
+        Date.now(),
+      );
 
       // Check system ID match
       if (status.system_id !== this.config.system_id) {
         throw TranscryptorError.inconsistentSystemName(
-            this.config.system_id,
-            status.system_id
+          this.config.system_id,
+          status.system_id,
         );
       }
 
@@ -286,34 +328,44 @@ export class TranscryptorClient {
         // eslint-disable-next-line camelcase
         protocol_version: "0.3.0",
         // eslint-disable-next-line camelcase
-        min_supported_version: "0.3.0"
+        min_supported_version: "0.3.0",
       } as VersionInfo;
 
       if (!this.isCompatibleVersion(status.version_info, clientVersion)) {
         throw TranscryptorError.incompatibleClientVersion(
-            clientVersion.protocol_version,
-            status.version_info.protocol_version,
-            status.version_info.min_supported_version
+          clientVersion.protocol_version,
+          status.version_info.protocol_version,
+          status.version_info.min_supported_version,
         );
       }
     } catch (error) {
       if (error instanceof TranscryptorError) {
-        this.status = new TranscryptorStatus(TranscryptorState.ERROR, Date.now());
+        this.status = new TranscryptorStatus(
+          TranscryptorState.ERROR,
+          Date.now(),
+        );
         throw error;
       }
 
       this.status = new TranscryptorStatus(TranscryptorState.ERROR, Date.now());
-      throw TranscryptorError.networkError(`Failed to check status: ${(error as Error).message}`);
+      throw TranscryptorError.networkError(
+        `Failed to check status: ${(error as Error).message}`,
+      );
     }
   }
 
   /**
    * Check if client and server versions are compatible
    */
-  private isCompatibleVersion(serverVersion: VersionInfo, clientVersion: VersionInfo): boolean {
+  private isCompatibleVersion(
+    serverVersion: VersionInfo,
+    clientVersion: VersionInfo,
+  ): boolean {
     // Compare semantic versions - this is a simplified implementation
-    return serverVersion.protocol_version >= clientVersion.min_supported_version &&
-        clientVersion.protocol_version >= serverVersion.min_supported_version;
+    return (
+      serverVersion.protocol_version >= clientVersion.min_supported_version &&
+      clientVersion.protocol_version >= serverVersion.min_supported_version
+    );
   }
 
   /**
@@ -323,7 +375,7 @@ export class TranscryptorClient {
     try {
       const token = await this.auth.token();
       const headers = {
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       };
 
       const response = await fetch(this.makeUrl("/config"), { headers });
@@ -331,7 +383,7 @@ export class TranscryptorClient {
 
       // Find this transcryptor in the config
       const transcryptorConfig = config.transcryptors.find(
-          (tc) => tc.system_id === this.config.system_id
+        (tc) => tc.system_id === this.config.system_id,
       );
 
       if (!transcryptorConfig) {
@@ -341,15 +393,19 @@ export class TranscryptorClient {
       // Check URL consistency
       if (transcryptorConfig.url !== this.config.url) {
         throw TranscryptorError.inconsistentConfig(
-            this.config.url,
-            transcryptorConfig.url
+          this.config.url,
+          transcryptorConfig.url,
         );
       }
 
-
-      if (clientsideConfig.blinded_global_secret_key !== config.blinded_global_secret_key ||
-          clientsideConfig.global_public_key !== config.global_public_key) {
-        throw PseudonymServiceError.inconsistentConfig(transcryptorConfig.system_id);
+      if (
+        clientsideConfig.blinded_global_secret_key !==
+          config.blinded_global_secret_key ||
+        clientsideConfig.global_public_key !== config.global_public_key
+      ) {
+        throw PseudonymServiceError.inconsistentConfig(
+          transcryptorConfig.system_id,
+        );
       }
 
       return config;
@@ -357,38 +413,46 @@ export class TranscryptorClient {
       if (error instanceof TranscryptorError) {
         throw error;
       }
-      throw TranscryptorError.networkError(`Failed to check config: ${(error as Error).message}`);
+      throw TranscryptorError.networkError(
+        `Failed to check config: ${(error as Error).message}`,
+      );
     }
   }
 
   /**
    * Start a new session with the transcryptor
    */
-  async startSession(): Promise<{ sessionId: EncryptionContext, keyShare: SessionKeyShare }> {
+  async startSession(): Promise<{
+    sessionId: EncryptionContext;
+    keyShare: SessionKeyShare;
+  }> {
     try {
       const token = await this.auth.token();
       const response = await fetch(this.makeUrl("/sessions/start"), {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       });
 
-      const sessionData = await this.processResponse<StartSessionResponse>(response);
+      const sessionData =
+        await this.processResponse<StartSessionResponse>(response);
 
       this.sessionId = sessionData.session_id;
       this.keyShare = SessionKeyShare.fromHex(sessionData.key_share);
 
       return {
         sessionId: sessionData.session_id,
-        keyShare: this.keyShare
+        keyShare: this.keyShare,
       };
     } catch (error) {
       if (error instanceof TranscryptorError) {
         throw error;
       }
-      throw TranscryptorError.networkError(`Failed to start session: ${(error as Error).message}`);
+      throw TranscryptorError.networkError(
+        `Failed to start session: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -400,8 +464,8 @@ export class TranscryptorClient {
       const token = await this.auth.token();
       const response = await fetch(this.makeUrl("/sessions/get"), {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       const sessionData = await this.processResponse<SessionResponse>(response);
@@ -410,7 +474,9 @@ export class TranscryptorClient {
       if (error instanceof TranscryptorError) {
         throw error;
       }
-      throw TranscryptorError.networkError(`Failed to get sessions: ${(error as Error).message}`);
+      throw TranscryptorError.networkError(
+        `Failed to get sessions: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -425,17 +491,17 @@ export class TranscryptorClient {
     try {
       const request: EndSessionRequest = {
         // eslint-disable-next-line camelcase
-        session_id: this.sessionId
+        session_id: this.sessionId,
       };
 
       const token = await this.auth.token();
       const response = await fetch(this.makeUrl("/sessions/end"), {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(request)
+        body: JSON.stringify(request),
       });
 
       await this.processResponse<void>(response);
@@ -446,7 +512,9 @@ export class TranscryptorClient {
       if (error instanceof TranscryptorError) {
         throw error;
       }
-      throw TranscryptorError.networkError(`Failed to end session: ${(error as Error).message}`);
+      throw TranscryptorError.networkError(
+        `Failed to end session: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -454,11 +522,11 @@ export class TranscryptorClient {
    * Pseudonymize an encrypted pseudonym
    */
   async pseudonymize(
-      encryptedPseudonym: EncryptedPseudonym,
-      domainFrom: PseudonymizationDomain,
-      domainTo: PseudonymizationDomain,
-      sessionFrom: EncryptionContext,
-      sessionTo: EncryptionContext
+    encryptedPseudonym: EncryptedPseudonym,
+    domainFrom: PseudonymizationDomain,
+    domainTo: PseudonymizationDomain,
+    sessionFrom: EncryptionContext,
+    sessionTo: EncryptionContext,
   ): Promise<EncryptedPseudonym> {
     try {
       const request: PseudonymizationRequest = {
@@ -471,26 +539,29 @@ export class TranscryptorClient {
         // eslint-disable-next-line camelcase
         session_from: sessionFrom,
         // eslint-disable-next-line camelcase
-        session_to: sessionTo
+        session_to: sessionTo,
       };
 
       const token = await this.auth.token();
       const response = await fetch(this.makeUrl("/pseudonymize"), {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(request)
+        body: JSON.stringify(request),
       });
 
-      const data = await this.processResponse<PseudonymizationResponse>(response);
+      const data =
+        await this.processResponse<PseudonymizationResponse>(response);
       return EncryptedPseudonym.fromBase64(data.encrypted_pseudonym);
     } catch (error) {
       if (error instanceof TranscryptorError) {
         throw error;
       }
-      throw TranscryptorError.networkError(`Failed to pseudonymize: ${(error as Error).message}`);
+      throw TranscryptorError.networkError(
+        `Failed to pseudonymize: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -498,16 +569,16 @@ export class TranscryptorClient {
    * Pseudonymize a batch of encrypted pseudonyms
    */
   async pseudonymizeBatch(
-      encryptedPseudonyms: EncryptedPseudonym[],
-      domainFrom: PseudonymizationDomain,
-      domainTo: PseudonymizationDomain,
-      sessionFrom: EncryptionContext,
-      sessionTo: EncryptionContext
+    encryptedPseudonyms: EncryptedPseudonym[],
+    domainFrom: PseudonymizationDomain,
+    domainTo: PseudonymizationDomain,
+    sessionFrom: EncryptionContext,
+    sessionTo: EncryptionContext,
   ): Promise<EncryptedPseudonym[]> {
     try {
       const request: PseudonymizationBatchRequest = {
         // eslint-disable-next-line camelcase
-        encrypted_pseudonyms: encryptedPseudonyms.map(p => p.asBase64()),
+        encrypted_pseudonyms: encryptedPseudonyms.map((p) => p.asBase64()),
         // eslint-disable-next-line camelcase
         domain_from: domainFrom,
         // eslint-disable-next-line camelcase
@@ -515,26 +586,31 @@ export class TranscryptorClient {
         // eslint-disable-next-line camelcase
         session_from: sessionFrom,
         // eslint-disable-next-line camelcase
-        session_to: sessionTo
+        session_to: sessionTo,
       };
 
       const token = await this.auth.token();
       const response = await fetch(this.makeUrl("/pseudonymize/batch"), {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(request)
+        body: JSON.stringify(request),
       });
 
-      const data = await this.processResponse<PseudonymizationBatchResponse>(response);
-      return data.encrypted_pseudonyms.map(p => EncryptedPseudonym.fromBase64(p));
+      const data =
+        await this.processResponse<PseudonymizationBatchResponse>(response);
+      return data.encrypted_pseudonyms.map((p) =>
+        EncryptedPseudonym.fromBase64(p),
+      );
     } catch (error) {
       if (error instanceof TranscryptorError) {
         throw error;
       }
-      throw TranscryptorError.networkError(`Failed to pseudonymize batch: ${(error as Error).message}`);
+      throw TranscryptorError.networkError(
+        `Failed to pseudonymize batch: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -542,9 +618,9 @@ export class TranscryptorClient {
    * Rekey an encrypted data point
    */
   async rekey(
-      encryptedData: EncryptedDataPoint,
-      sessionFrom: EncryptionContext,
-      sessionTo: EncryptionContext
+    encryptedData: EncryptedDataPoint,
+    sessionFrom: EncryptionContext,
+    sessionTo: EncryptionContext,
   ): Promise<EncryptedDataPoint> {
     try {
       const request: RekeyRequest = {
@@ -553,17 +629,17 @@ export class TranscryptorClient {
         // eslint-disable-next-line camelcase
         session_from: sessionFrom,
         // eslint-disable-next-line camelcase
-        session_to: sessionTo
+        session_to: sessionTo,
       };
 
       const token = await this.auth.token();
       const response = await fetch(this.makeUrl("/rekey"), {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(request)
+        body: JSON.stringify(request),
       });
 
       const data = await this.processResponse<RekeyResponse>(response);
@@ -572,7 +648,9 @@ export class TranscryptorClient {
       if (error instanceof TranscryptorError) {
         throw error;
       }
-      throw TranscryptorError.networkError(`Failed to rekey: ${(error as Error).message}`);
+      throw TranscryptorError.networkError(
+        `Failed to rekey: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -580,37 +658,39 @@ export class TranscryptorClient {
    * Rekey a batch of encrypted data points
    */
   async rekeyBatch(
-      encryptedData: EncryptedDataPoint[],
-      sessionFrom: EncryptionContext,
-      sessionTo: EncryptionContext
+    encryptedData: EncryptedDataPoint[],
+    sessionFrom: EncryptionContext,
+    sessionTo: EncryptionContext,
   ): Promise<EncryptedDataPoint[]> {
     try {
       const request: RekeyBatchRequest = {
         // eslint-disable-next-line camelcase
-        encrypted_data: encryptedData.map(d => d.asBase64()),
+        encrypted_data: encryptedData.map((d) => d.asBase64()),
         // eslint-disable-next-line camelcase
         session_from: sessionFrom,
         // eslint-disable-next-line camelcase
-        session_to: sessionTo
+        session_to: sessionTo,
       };
 
       const token = await this.auth.token();
       const response = await fetch(this.makeUrl("/rekey/batch"), {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(request)
+        body: JSON.stringify(request),
       });
 
       const data = await this.processResponse<RekeyBatchResponse>(response);
-      return data.encrypted_data.map(d => EncryptedDataPoint.fromBase64(d));
+      return data.encrypted_data.map((d) => EncryptedDataPoint.fromBase64(d));
     } catch (error) {
       if (error instanceof TranscryptorError) {
         throw error;
       }
-      throw TranscryptorError.networkError(`Failed to rekey batch: ${(error as Error).message}`);
+      throw TranscryptorError.networkError(
+        `Failed to rekey batch: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -618,20 +698,18 @@ export class TranscryptorClient {
    * Transcrypt data consisting of multiple pseudonyms and data points
    */
   async transcrypt(
-      encrypted: EncryptedEntityData[],
-      domainFrom: PseudonymizationDomain,
-      domainTo: PseudonymizationDomain,
-      sessionFrom: EncryptionContext,
-      sessionTo: EncryptionContext
+    encrypted: EncryptedEntityData[],
+    domainFrom: PseudonymizationDomain,
+    domainTo: PseudonymizationDomain,
+    sessionFrom: EncryptionContext,
+    sessionTo: EncryptionContext,
   ): Promise<EncryptedEntityData[]> {
     try {
       const request: TranscryptionRequest = {
-        encrypted: encrypted.map(e => ({
-          // eslint-disable-next-line camelcase
-          encrypted_pseudonym: e.encrypted_pseudonym.asBase64(),
-          // eslint-disable-next-line camelcase
-          encrypted_data_points: e.encrypted_data_points.map(dp => dp.asBase64())
-        })),
+        encrypted: encrypted.map((e) => [
+          e.encrypted_pseudonym.map((pseu) => pseu.asBase64()),
+          e.encrypted_data_points.map((dp) => dp.asBase64()),
+        ]),
         // eslint-disable-next-line camelcase
         domain_from: domainFrom,
         // eslint-disable-next-line camelcase
@@ -639,32 +717,38 @@ export class TranscryptorClient {
         // eslint-disable-next-line camelcase
         session_from: sessionFrom,
         // eslint-disable-next-line camelcase
-        session_to: sessionTo
+        session_to: sessionTo,
       };
 
       const token = await this.auth.token();
       const response = await fetch(this.makeUrl("/transcrypt"), {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(request)
+        body: JSON.stringify(request),
       });
 
       const data = await this.processResponse<TranscryptionResponse>(response);
 
-      return data.encrypted.map(e => ({
+      return data.encrypted.map((e) => ({
         // eslint-disable-next-line camelcase
-        encrypted_pseudonym: EncryptedPseudonym.fromBase64(e.encrypted_pseudonym),
+        encrypted_pseudonym: e[0].map((pseu) =>
+          EncryptedPseudonym.fromBase64(pseu),
+        ),
         // eslint-disable-next-line camelcase
-        encrypted_data_points: e.encrypted_data_points.map(dp => EncryptedDataPoint.fromBase64(dp))
+        encrypted_data_points: e[1].map((dp) =>
+          EncryptedDataPoint.fromBase64(dp),
+        ),
       }));
     } catch (error) {
       if (error instanceof TranscryptorError) {
         throw error;
       }
-      throw TranscryptorError.networkError(`Failed to transcrypt: ${(error as Error).message}`);
+      throw TranscryptorError.networkError(
+        `Failed to transcrypt: ${(error as Error).message}`,
+      );
     }
   }
 

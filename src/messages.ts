@@ -1,14 +1,11 @@
-import {EncryptedDataPoint, EncryptedPseudonym} from "@nolai/libpep-wasm";
+import { EncryptedDataPoint, EncryptedPseudonym } from "@nolai/libpep-wasm";
 
 export interface EncryptedEntityData {
-  encrypted_pseudonym: EncryptedPseudonym;
+  encrypted_pseudonym: EncryptedPseudonym[];
   encrypted_data_points: EncryptedDataPoint[];
 }
 
-export interface EncryptedEntityDataJson {
-  encrypted_pseudonym: string;
-  encrypted_data_points: string[];
-}
+export type EncryptedEntityDataJson = [string[], string[]];
 
 /**
  * Pseudonymization domain type
