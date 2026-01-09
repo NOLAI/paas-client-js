@@ -1,11 +1,11 @@
-import { EncryptedDataPoint, EncryptedPseudonym } from "@nolai/libpep-wasm";
+import { EncryptedPseudonym, EncryptedAttribute } from "@nolai/libpep-wasm";
 
-export interface EncryptedEntityData {
+export interface EncryptedData {
   encrypted_pseudonym: EncryptedPseudonym[];
-  encrypted_data_points: EncryptedDataPoint[];
+  encrypted_attribute: EncryptedAttribute[];
 }
 
-export type EncryptedEntityDataJson = [string[], string[]];
+export type EncryptedDataJson = [string[], string[]];
 
 /**
  * Pseudonymization domain type
@@ -34,7 +34,10 @@ export interface StatusResponse {
  */
 export interface StartSessionResponse {
   session_id: string;
-  key_share: string;
+  key_shares: {
+    pseudonym: string,
+    attribute: string
+  };
 }
 
 /**
@@ -91,7 +94,7 @@ export interface PseudonymizationBatchResponse {
  * Request to rekey an encrypted data point
  */
 export interface RekeyRequest {
-  encrypted_data: string;
+  encrypted_attribute: string;
   session_from: string;
   session_to: string;
 }
@@ -100,14 +103,14 @@ export interface RekeyRequest {
  * Response from rekeying an encrypted data point
  */
 export interface RekeyResponse {
-  encrypted_data: string;
+  encrypted_attribute: string;
 }
 
 /**
  * Request to rekey a batch of encrypted data points
  */
 export interface RekeyBatchRequest {
-  encrypted_data: string[];
+  encrypted_attributes: string[];
   session_from: string;
   session_to: string;
 }
@@ -116,14 +119,14 @@ export interface RekeyBatchRequest {
  * Response from rekeying a batch of encrypted data points
  */
 export interface RekeyBatchResponse {
-  encrypted_data: string[];
+  encrypted_attributes: string[];
 }
 
 /**
  * Request to transcrypt entity data
  */
 export interface TranscryptionRequest {
-  encrypted: EncryptedEntityDataJson[];
+  encrypted: EncryptedDataJson[];
   domain_from: string;
   domain_to: string;
   session_from: string;
@@ -134,5 +137,5 @@ export interface TranscryptionRequest {
  * Response from transcrypting entity data
  */
 export interface TranscryptionResponse {
-  encrypted: EncryptedEntityDataJson[];
+  encrypted: EncryptedDataJson[];
 }

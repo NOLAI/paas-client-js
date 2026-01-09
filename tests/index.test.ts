@@ -8,21 +8,38 @@ import {
 } from "../dist/paas-client.js";
 // @ts-ignore
 import {
-  BlindedGlobalSecretKey,
-  EncryptedPseudonym,
-  GlobalPublicKey,
+    AttributeGlobalPublicKey,
+    BlindedAttributeGlobalSecretKey,
+    BlindedGlobalKeys, BlindedPseudonymGlobalSecretKey,
+    EncryptedPseudonym, GlobalPublicKeys, PseudonymGlobalPublicKey,
 } from "@nolai/libpep-wasm";
 import { setupServer } from "msw/node";
 import { http } from "msw";
 
+
+// Public global keys:
+//   - Attributes: 94169b3b23113849006b385e568a916be16d91f5869ff9b01bd14ca41e79a848
+//   - Pseudonyms: c49a19c142ee9c03624bdb4ee33e3072ab1fb9a10a5586c8c6001ebf7e72531c
+// Blinded secret keys:
+//   - Attributes: d92ff4a5a268cf38a0d1478e56007987dc339af1356afaf606fc55845abb2a03
+//   - Pseudonyms: 6cc6d8c611e2ce3ab06c2328954726d50505419d92160bb21e128fd49397940d
+// Blinding factors (keep secret):
+//   - 1f861128928bb615582ddc4dfd22ac378ad82af99455fe81b7bd4751ede82d0c
+//   - c0e4850c6e591cab3e68db39987dbde52870f2173631f4bb57b926601f083402
+
+
 const config: PAASConfig = {
     // eslint-disable-next-line camelcase
-    blinded_global_secret_key:
-      "dacec694506fa1c1ab562059174b022151acab4594723614811eaaa93a9c5908"
+    blinded_global_keys: new BlindedGlobalKeys(
+        BlindedPseudonymGlobalSecretKey.fromHex("6cc6d8c611e2ce3ab06c2328954726d50505419d92160bb21e128fd49397940d"),
+        BlindedAttributeGlobalSecretKey.fromHex("d92ff4a5a268cf38a0d1478e56007987dc339af1356afaf606fc55845abb2a03")
+    )
   ,
     // eslint-disable-next-line camelcase
-  global_public_key:
-      "3025b1584bc729154f33071f73bb9499509bb504f887496ba86cb57e88d5dc62"
+  global_public_keys: new GlobalPublicKeys(
+      PseudonymGlobalPublicKey.fromHex("c49a19c142ee9c03624bdb4ee33e3072ab1fb9a10a5586c8c6001ebf7e72531c"),
+      AttributeGlobalPublicKey.fromHex("94169b3b23113849006b385e568a916be16d91f5869ff9b01bd14ca41e79a848")
+  )
   ,
   transcryptors: [
     new TranscryptorConfig("test_system_1", "http://localhost:8080"),
@@ -49,8 +66,10 @@ server.use(
         // eslint-disable-next-line camelcase
         session_id: "test_session_1",
         // eslint-disable-next-line camelcase
-        key_share:
-          "5f5289d6909083257b9372c362a1905a0f0370181c5b75af812815513edcda0a",
+        key_shares: {
+          pseudonym: "5f5289d6909083257b9372c362a1905a0f0370181c5b75af812815513edcda0a",
+          attribute: "5f5289d6909083257b9372c362a1905a0f0370181c5b75af812815513edcda0a"
+        },
       }),
       {
         status: 200,
@@ -68,8 +87,10 @@ server.use(
         // eslint-disable-next-line camelcase
         session_id: "test_session_2",
         // eslint-disable-next-line camelcase
-        key_share:
-          "5f5289d6909083257b9372c362a1905a0f0370181c5b75af812815513edcda0a",
+        key_shares: {
+          pseudonym: "5f5289d6909083257b9372c362a1905a0f0370181c5b75af812815513edcda0a",
+          attribute: "5f5289d6909083257b9372c362a1905a0f0370181c5b75af812815513edcda0a"
+        },
       }),
       {
         status: 200,
@@ -179,7 +200,22 @@ server.use(
         expect(authHeader).toBe("Bearer test_token_1");
 
         return new Response(
-            JSON.stringify(config),
+            JSON.stringify({
+              // eslint-disable-next-line camelcase
+              blinded_global_keys: {
+                pseudonym: "6cc6d8c611e2ce3ab06c2328954726d50505419d92160bb21e128fd49397940d",
+                attribute: "d92ff4a5a268cf38a0d1478e56007987dc339af1356afaf606fc55845abb2a03"
+              },
+              // eslint-disable-next-line camelcase
+              global_public_keys: {
+                pseudonym: "c49a19c142ee9c03624bdb4ee33e3072ab1fb9a10a5586c8c6001ebf7e72531c",
+                attribute: "94169b3b23113849006b385e568a916be16d91f5869ff9b01bd14ca41e79a848"
+              },
+              transcryptors: [
+                { system_id: "test_system_1", url: "http://localhost:8080" },
+                { system_id: "test_system_2", url: "http://localhost:8081" },
+              ]
+            }),
             {
             status: 200,
             headers: { "Content-Type": "application/json" },
@@ -233,12 +269,12 @@ describe("PaaS js client tests", () => {
       domainTo,
     );
 
-    expect(result.asBase64()).toEqual(
+    expect(result.toBase64()).toEqual(
       "gqmiHiFA8dMdNtbCgsJ-EEfT9fjTV91BrfcHKN57e2vaLR2_UJEVExd6o9tdZg7vKGQklYZwV3REOaOQedKtUA==",
     );
 
     const pseudonym = service.decrypt(result);
-    expect(pseudonym.asHex()).toEqual(
+    expect(pseudonym.toHex()).toEqual(
       "40280c88c76aa1ecdd567129d5ea7821a0b79b25bbe5eb2220eedc215feb450b",
     );
   }, 60000);

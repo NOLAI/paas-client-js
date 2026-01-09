@@ -1,3 +1,5 @@
+import {BlindedGlobalKeys, GlobalPublicKeys} from "@nolai/libpep-wasm";
+
 /**
  * Configuration for a single transcryptor
  */
@@ -18,7 +20,7 @@ export class TranscryptorConfig {
  * Configuration for the PAAS service
  */
 export interface PAASConfig {
-  blinded_global_secret_key: string;
-  global_public_key: string;
+  blinded_global_keys: BlindedGlobalKeys;
+  global_public_keys: GlobalPublicKeys;
   transcryptors: TranscryptorConfig[];
 }

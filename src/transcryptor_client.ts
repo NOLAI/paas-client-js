@@ -1,10 +1,9 @@
 import {
-  EncryptedDataPoint,
-  EncryptedPseudonym,
-  SessionKeyShare,
+  AttributeSessionKeyShare, EncryptedAttribute,
+  EncryptedPseudonym, PseudonymSessionKeyShare, SessionKeyShares,
 } from "@nolai/libpep-wasm";
 
-import { PseudonymizationDomain, EncryptedEntityData } from "./messages.js";
+import {EncryptedData, PseudonymizationDomain} from "./messages.js";
 import { EncryptionContext, SystemId } from "./sessions.js";
 import { PAASConfig, TranscryptorConfig } from "./config.js";
 import { Auth } from "./auth.js";
@@ -192,7 +191,7 @@ interface ErrorResponse {
 export class TranscryptorClient {
   config: TranscryptorConfig;
   sessionId: EncryptionContext | null = null;
-  keyShare: SessionKeyShare | null = null;
+  keyShares: SessionKeyShares | null = null;
   status: TranscryptorStatus;
   private auth: Auth;
   private apiBasePath = ""; // This should match paas_api::paths::API_BASE in Rust
@@ -225,11 +224,11 @@ export class TranscryptorClient {
     config: TranscryptorConfig,
     auth: Auth,
     sessionId: EncryptionContext,
-    keyShare: SessionKeyShare,
+    keyShares: SessionKeyShares,
   ): Promise<TranscryptorClient> {
     const client = new TranscryptorClient(config, auth);
     client.sessionId = sessionId;
-    client.keyShare = keyShare;
+    client.keyShares = keyShares;
     await client.checkStatus();
     return client;
   }
@@ -398,10 +397,18 @@ export class TranscryptorClient {
         );
       }
 
+      console.log("Clientside config:", clientsideConfig);
+      console.log("Clientside Blinded", clientsideConfig.blinded_global_keys);
+      console.log("Serverside config:", config);
+      console.log("Serverside Blinded", config.blinded_global_keys);
+
       if (
-        clientsideConfig.blinded_global_secret_key !==
-          config.blinded_global_secret_key ||
-        clientsideConfig.global_public_key !== config.global_public_key
+          (clientsideConfig.blinded_global_keys.attribute.toHex() !==
+          config.blinded_global_keys.attribute.toHex() )||
+          (clientsideConfig.blinded_global_keys.pseudonym.toHex() !==
+          config.blinded_global_keys.pseudonym.toHex()) ||
+          (clientsideConfig.global_public_keys.attribute.toHex() !== config.global_public_keys.attribute.toHex()) ||
+          (clientsideConfig.global_public_keys.pseudonym.toHex() !== config.global_public_keys.pseudonym.toHex())
       ) {
         throw PseudonymServiceError.inconsistentConfig(
           transcryptorConfig.system_id,
@@ -424,7 +431,7 @@ export class TranscryptorClient {
    */
   async startSession(): Promise<{
     sessionId: EncryptionContext;
-    keyShare: SessionKeyShare;
+    keyShares: SessionKeyShares;
   }> {
     try {
       const token = await this.auth.token();
@@ -440,11 +447,11 @@ export class TranscryptorClient {
         await this.processResponse<StartSessionResponse>(response);
 
       this.sessionId = sessionData.session_id;
-      this.keyShare = SessionKeyShare.fromHex(sessionData.key_share);
+      this.keyShares = new SessionKeyShares(PseudonymSessionKeyShare.fromHex(sessionData.key_shares.pseudonym), AttributeSessionKeyShare.fromHex(sessionData.key_shares.attribute));
 
       return {
         sessionId: sessionData.session_id,
-        keyShare: this.keyShare,
+        keyShares: this.keyShares,
       };
     } catch (error) {
       if (error instanceof TranscryptorError) {
@@ -507,7 +514,7 @@ export class TranscryptorClient {
       await this.processResponse<void>(response);
 
       this.sessionId = null;
-      this.keyShare = null;
+      this.keyShares = null;
     } catch (error) {
       if (error instanceof TranscryptorError) {
         throw error;
@@ -531,7 +538,7 @@ export class TranscryptorClient {
     try {
       const request: PseudonymizationRequest = {
         // eslint-disable-next-line camelcase
-        encrypted_pseudonym: encryptedPseudonym.asBase64(),
+        encrypted_pseudonym: encryptedPseudonym.toBase64(),
         // eslint-disable-next-line camelcase
         domain_from: domainFrom,
         // eslint-disable-next-line camelcase
@@ -578,7 +585,7 @@ export class TranscryptorClient {
     try {
       const request: PseudonymizationBatchRequest = {
         // eslint-disable-next-line camelcase
-        encrypted_pseudonyms: encryptedPseudonyms.map((p) => p.asBase64()),
+        encrypted_pseudonyms: encryptedPseudonyms.map((p) => p.toBase64()),
         // eslint-disable-next-line camelcase
         domain_from: domainFrom,
         // eslint-disable-next-line camelcase
@@ -618,14 +625,14 @@ export class TranscryptorClient {
    * Rekey an encrypted data point
    */
   async rekey(
-    encryptedData: EncryptedDataPoint,
+    encryptedAttribute: EncryptedAttribute,
     sessionFrom: EncryptionContext,
     sessionTo: EncryptionContext,
-  ): Promise<EncryptedDataPoint> {
+  ): Promise<EncryptedAttribute> {
     try {
       const request: RekeyRequest = {
         // eslint-disable-next-line camelcase
-        encrypted_data: encryptedData.asBase64(),
+        encrypted_attribute: encryptedAttribute.toBase64(),
         // eslint-disable-next-line camelcase
         session_from: sessionFrom,
         // eslint-disable-next-line camelcase
@@ -643,7 +650,7 @@ export class TranscryptorClient {
       });
 
       const data = await this.processResponse<RekeyResponse>(response);
-      return EncryptedDataPoint.fromBase64(data.encrypted_data);
+      return EncryptedAttribute.fromBase64(data.encrypted_attribute);
     } catch (error) {
       if (error instanceof TranscryptorError) {
         throw error;
@@ -658,14 +665,14 @@ export class TranscryptorClient {
    * Rekey a batch of encrypted data points
    */
   async rekeyBatch(
-    encryptedData: EncryptedDataPoint[],
+    encryptedAttributes: EncryptedAttribute[],
     sessionFrom: EncryptionContext,
     sessionTo: EncryptionContext,
-  ): Promise<EncryptedDataPoint[]> {
+  ): Promise<EncryptedAttribute[]> {
     try {
       const request: RekeyBatchRequest = {
         // eslint-disable-next-line camelcase
-        encrypted_data: encryptedData.map((d) => d.asBase64()),
+        encrypted_attributes: encryptedAttributes.map((d) => d.toBase64()),
         // eslint-disable-next-line camelcase
         session_from: sessionFrom,
         // eslint-disable-next-line camelcase
@@ -683,7 +690,7 @@ export class TranscryptorClient {
       });
 
       const data = await this.processResponse<RekeyBatchResponse>(response);
-      return data.encrypted_data.map((d) => EncryptedDataPoint.fromBase64(d));
+      return data.encrypted_attributes.map((d) => EncryptedAttribute.fromBase64(d));
     } catch (error) {
       if (error instanceof TranscryptorError) {
         throw error;
@@ -698,17 +705,17 @@ export class TranscryptorClient {
    * Transcrypt data consisting of multiple pseudonyms and data points
    */
   async transcrypt(
-    encrypted: EncryptedEntityData[],
+    encrypted: EncryptedData[],
     domainFrom: PseudonymizationDomain,
     domainTo: PseudonymizationDomain,
     sessionFrom: EncryptionContext,
     sessionTo: EncryptionContext,
-  ): Promise<EncryptedEntityData[]> {
+  ): Promise<EncryptedData[]> {
     try {
       const request: TranscryptionRequest = {
         encrypted: encrypted.map((e) => [
-          e.encrypted_pseudonym.map((pseu) => pseu.asBase64()),
-          e.encrypted_data_points.map((dp) => dp.asBase64()),
+          e.encrypted_pseudonym.map((pseu) => pseu.toBase64()),
+          e.encrypted_attribute.map((dp) => dp.toBase64()),
         ]),
         // eslint-disable-next-line camelcase
         domain_from: domainFrom,
@@ -738,8 +745,8 @@ export class TranscryptorClient {
           EncryptedPseudonym.fromBase64(pseu),
         ),
         // eslint-disable-next-line camelcase
-        encrypted_data_points: e[1].map((dp) =>
-          EncryptedDataPoint.fromBase64(dp),
+        encrypted_attribute: e[1].map((dp) =>
+          EncryptedAttribute.fromBase64(dp),
         ),
       }));
     } catch (error) {
@@ -769,8 +776,8 @@ export class TranscryptorClient {
   /**
    * Get the key share
    */
-  getKeyShare(): SessionKeyShare | null {
-    return this.keyShare;
+  getKeyShares(): SessionKeyShares | null {
+    return this.keyShares;
   }
 
   /**

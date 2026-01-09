@@ -2,7 +2,7 @@ export {
   PseudonymService,
   PseudonymServiceError,
   PseudonymServiceErrorType,
-  SessionKeyShares,
+  SystemSessionKeyShares,
   PseudonymServiceDump,
 } from "./pseudonym_service.js";
 export {
@@ -43,6 +43,6 @@ export {
   RekeyBatchResponse,
   TranscryptionRequest,
   TranscryptionResponse,
-  EncryptedEntityData,
-  EncryptedEntityDataJson,
+  EncryptedData,
+  EncryptedDataJson,
 } from "./messages.js";
