@@ -6,6 +6,12 @@ import {
   Client as PEPClient,
   EncryptedAttribute,
   EncryptedPseudonym,
+  EncryptedPEPJSONValue,
+  LongAttribute,
+  LongEncryptedAttribute,
+  LongEncryptedPseudonym,
+  LongPseudonym,
+  PEPJSONValue,
   Pseudonym,
   SessionKeys,
   SessionKeyShares,
@@ -728,11 +734,20 @@ export class PseudonymService {
   }
 
   /**
-   * Encrypt a message using the PEPClient
+   * Encryptable message types
+   */
+  public async encrypt(message: Pseudonym): Promise<[EncryptedPseudonym, EncryptionContexts]>;
+  public async encrypt(message: Attribute): Promise<[EncryptedAttribute, EncryptionContexts]>;
+  public async encrypt(message: LongPseudonym): Promise<[LongEncryptedPseudonym, EncryptionContexts]>;
+  public async encrypt(message: LongAttribute): Promise<[LongEncryptedAttribute, EncryptionContexts]>;
+  public async encrypt(message: PEPJSONValue): Promise<[EncryptedPEPJSONValue, EncryptionContexts]>;
+  /**
+   * Encrypt a message using the PEPClient.
+   * Polymorphic: accepts Pseudonym, Attribute, LongPseudonym, LongAttribute, or PEPJSONValue.
    */
   public async encrypt(
-    message: Pseudonym | Attribute,
-  ): Promise<[EncryptedPseudonym | EncryptedAttribute, EncryptionContexts]> {
+    message: Pseudonym | Attribute | LongPseudonym | LongAttribute | PEPJSONValue,
+  ): Promise<[EncryptedPseudonym | EncryptedAttribute | LongEncryptedPseudonym | LongEncryptedAttribute | EncryptedPEPJSONValue, EncryptionContexts]> {
     if (!this.pepCryptoClient) {
       await this.init();
     }
@@ -741,22 +756,35 @@ export class PseudonymService {
       throw PseudonymServiceError.uninitializedPEPClient();
     }
 
-    let encrypted: EncryptedPseudonym | EncryptedAttribute;
+    let encrypted: EncryptedPseudonym | EncryptedAttribute | LongEncryptedPseudonym | LongEncryptedAttribute | EncryptedPEPJSONValue;
+
     if (message instanceof Pseudonym) {
       encrypted = this.pepCryptoClient.encryptPseudonym(message);
+    } else if (message instanceof Attribute) {
+      encrypted = this.pepCryptoClient.encryptData(message);
+    } else if (message instanceof LongPseudonym) {
+      encrypted = this.pepCryptoClient.encryptLongPseudonym(message);
+    } else if (message instanceof LongAttribute) {
+      encrypted = this.pepCryptoClient.encryptLongData(message);
     } else {
-      encrypted = this.pepCryptoClient.encryptData(message as Attribute);
+      // PEPJSONValue
+      encrypted = this.pepCryptoClient.encryptJSON(message as PEPJSONValue);
     }
 
     return [encrypted, this.getCurrentSessions()];
   }
 
   /**
-   * Batch encrypt pseudonyms using the PEPClient
+   * Batch encrypt messages using the PEPClient.
+   * All messages must be of the same type.
    */
-  public async encryptPseudonymBatch(
-    messages: Pseudonym[],
-  ): Promise<[EncryptedPseudonym[], EncryptionContexts]> {
+  public async encryptBatch(messages: Pseudonym[]): Promise<[EncryptedPseudonym[], EncryptionContexts]>;
+  public async encryptBatch(messages: Attribute[]): Promise<[EncryptedAttribute[], EncryptionContexts]>;
+  public async encryptBatch(messages: LongPseudonym[]): Promise<[LongEncryptedPseudonym[], EncryptionContexts]>;
+  public async encryptBatch(messages: LongAttribute[]): Promise<[LongEncryptedAttribute[], EncryptionContexts]>;
+  public async encryptBatch(
+    messages: Pseudonym[] | Attribute[] | LongPseudonym[] | LongAttribute[],
+  ): Promise<[EncryptedPseudonym[] | EncryptedAttribute[] | LongEncryptedPseudonym[] | LongEncryptedAttribute[], EncryptionContexts]> {
     if (!this.pepCryptoClient) {
       await this.init();
     }
@@ -765,25 +793,23 @@ export class PseudonymService {
       throw PseudonymServiceError.uninitializedPEPClient();
     }
 
-    const encrypted = this.pepCryptoClient.encryptPseudonymBatch(messages);
-    return [encrypted, this.getCurrentSessions()];
-  }
-
-  /**
-   * Batch encrypt attributes using the PEPClient
-   */
-  public async encryptDataBatch(
-    messages: Attribute[],
-  ): Promise<[EncryptedAttribute[], EncryptionContexts]> {
-    if (!this.pepCryptoClient) {
-      await this.init();
+    if (messages.length === 0) {
+      return [[], this.getCurrentSessions()];
     }
 
-    if (!this.pepCryptoClient) {
-      throw PseudonymServiceError.uninitializedPEPClient();
+    const first = messages[0];
+    let encrypted: EncryptedPseudonym[] | EncryptedAttribute[] | LongEncryptedPseudonym[] | LongEncryptedAttribute[];
+
+    if (first instanceof Pseudonym) {
+      encrypted = this.pepCryptoClient.encryptPseudonymBatch(messages as Pseudonym[]);
+    } else if (first instanceof Attribute) {
+      encrypted = this.pepCryptoClient.encryptDataBatch(messages as Attribute[]);
+    } else if (first instanceof LongPseudonym) {
+      encrypted = this.pepCryptoClient.encryptLongPseudonymBatch(messages as LongPseudonym[]);
+    } else {
+      encrypted = this.pepCryptoClient.encryptLongDataBatch(messages as LongAttribute[]);
     }
 
-    const encrypted = this.pepCryptoClient.encryptDataBatch(messages);
     return [encrypted, this.getCurrentSessions()];
   }
 
@@ -806,41 +832,67 @@ export class PseudonymService {
   }
 
   /**
-   * Decrypt an encrypted message using the PEPClient
+   * Decryptable encrypted types
+   */
+  public decrypt(encrypted: EncryptedPseudonym): Pseudonym;
+  public decrypt(encrypted: EncryptedAttribute): Attribute;
+  public decrypt(encrypted: LongEncryptedPseudonym): LongPseudonym;
+  public decrypt(encrypted: LongEncryptedAttribute): LongAttribute;
+  public decrypt(encrypted: EncryptedPEPJSONValue): PEPJSONValue;
+  /**
+   * Decrypt an encrypted message using the PEPClient.
+   * Polymorphic: accepts EncryptedPseudonym, EncryptedAttribute, LongEncryptedPseudonym, LongEncryptedAttribute, or EncryptedPEPJSONValue.
    */
   public decrypt(
-    encrypted: EncryptedPseudonym | EncryptedAttribute,
-  ): Pseudonym | Attribute {
+    encrypted: EncryptedPseudonym | EncryptedAttribute | LongEncryptedPseudonym | LongEncryptedAttribute | EncryptedPEPJSONValue,
+  ): Pseudonym | Attribute | LongPseudonym | LongAttribute | PEPJSONValue {
     if (!this.pepCryptoClient) {
       throw PseudonymServiceError.uninitializedPEPClient();
     }
 
     if (encrypted instanceof EncryptedPseudonym) {
       return this.pepCryptoClient.decryptPseudonym(encrypted);
+    } else if (encrypted instanceof EncryptedAttribute) {
+      return this.pepCryptoClient.decryptData(encrypted);
+    } else if (encrypted instanceof LongEncryptedPseudonym) {
+      return this.pepCryptoClient.decryptLongPseudonym(encrypted);
+    } else if (encrypted instanceof LongEncryptedAttribute) {
+      return this.pepCryptoClient.decryptLongData(encrypted);
     } else {
-      return this.pepCryptoClient.decryptData(encrypted as EncryptedAttribute);
+      // EncryptedPEPJSONValue
+      return this.pepCryptoClient.decryptJSON(encrypted as EncryptedPEPJSONValue);
     }
   }
 
   /**
-   * Batch decrypt encrypted pseudonyms using the PEPClient
+   * Batch decrypt encrypted messages using the PEPClient.
+   * All messages must be of the same type.
    */
-  public decryptPseudonymBatch(encrypted: EncryptedPseudonym[]): Pseudonym[] {
+  public decryptBatch(encrypted: EncryptedPseudonym[]): Pseudonym[];
+  public decryptBatch(encrypted: EncryptedAttribute[]): Attribute[];
+  public decryptBatch(encrypted: LongEncryptedPseudonym[]): LongPseudonym[];
+  public decryptBatch(encrypted: LongEncryptedAttribute[]): LongAttribute[];
+  public decryptBatch(
+    encrypted: EncryptedPseudonym[] | EncryptedAttribute[] | LongEncryptedPseudonym[] | LongEncryptedAttribute[],
+  ): Pseudonym[] | Attribute[] | LongPseudonym[] | LongAttribute[] {
     if (!this.pepCryptoClient) {
       throw PseudonymServiceError.uninitializedPEPClient();
     }
 
-    return this.pepCryptoClient.decryptPseudonymBatch(encrypted);
-  }
-
-  /**
-   * Batch decrypt encrypted attributes using the PEPClient
-   */
-  public decryptDataBatch(encrypted: EncryptedAttribute[]): Attribute[] {
-    if (!this.pepCryptoClient) {
-      throw PseudonymServiceError.uninitializedPEPClient();
+    if (encrypted.length === 0) {
+      return [];
     }
 
-    return this.pepCryptoClient.decryptDataBatch(encrypted);
+    const first = encrypted[0];
+
+    if (first instanceof EncryptedPseudonym) {
+      return this.pepCryptoClient.decryptPseudonymBatch(encrypted as EncryptedPseudonym[]);
+    } else if (first instanceof EncryptedAttribute) {
+      return this.pepCryptoClient.decryptDataBatch(encrypted as EncryptedAttribute[]);
+    } else if (first instanceof LongEncryptedPseudonym) {
+      return this.pepCryptoClient.decryptLongPseudonymBatch(encrypted as LongEncryptedPseudonym[]);
+    } else {
+      return this.pepCryptoClient.decryptLongDataBatch(encrypted as LongEncryptedAttribute[]);
+    }
   }
 }
