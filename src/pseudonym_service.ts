@@ -1,11 +1,22 @@
 import {
-  Attribute, EncryptedAttribute,
+  Attribute,
+  BlindedAttributeGlobalSecretKey,
+  BlindedGlobalKeys,
+  BlindedPseudonymGlobalSecretKey,
+  Client as PEPClient,
+  EncryptedAttribute,
   EncryptedPseudonym,
-  PEPClient,
-  Pseudonym, SessionKeys, SessionKeyShares,
+  Pseudonym,
+  SessionKeys,
+  SessionKeyShares,
 } from "@nolai/libpep-wasm";
 
-import {PseudonymizationDomain, EncryptedData} from "./messages.js";
+import {
+  PseudonymizationDomain,
+  AnyEncryptedPseudonym,
+  AnyEncryptedAttribute,
+  AnyEncryptedData,
+} from "./messages.js";
 import {
   TranscryptorClient,
   TranscryptorError,
@@ -181,7 +192,7 @@ export class PseudonymService {
     config: PAASConfig,
     auths: SystemAuths,
     sessionIds: EncryptionContexts,
-    sessionKeyShares: SessionKeyShares,
+    sessionKeyShares: SystemSessionKeyShares,
     sessionKeys: SessionKeys,
   ): Promise<PseudonymService> {
     const service = new PseudonymService(config);
@@ -250,6 +261,13 @@ export class PseudonymService {
   }
 
   /**
+   * Check if the PEP crypto client is initialized
+   */
+  public isInitialized(): boolean {
+    return this.pepCryptoClient !== null;
+  }
+
+  /**
    * Initialize the PseudonymService by starting sessions with all transcryptors
    */
   public async init(): Promise<void> {
@@ -268,11 +286,12 @@ export class PseudonymService {
       }
     }
 
+    const bgk = new BlindedGlobalKeys(BlindedPseudonymGlobalSecretKey.fromHex(this.config.blinded_global_keys.pseudonym),
+        BlindedAttributeGlobalSecretKey.fromHex(this.config.blinded_global_keys.attribute),
+    )
+
     // Initialize the PEP crypto client
-    this.pepCryptoClient = new PEPClient(
-        this.config.blinded_global_keys,
-        sks,
-    );
+    this.pepCryptoClient = new PEPClient(bgk, sks);
   }
 
   /**
@@ -314,7 +333,10 @@ export class PseudonymService {
 
       // Update the session key in the PEP crypto client if it exists
       if (oldKeyShares && this.pepCryptoClient) {
-        this.pepCryptoClient.updateSessionSecretKeys(oldKeyShares, newKeyShares);
+        this.pepCryptoClient.updateSessionSecretKeys(
+          oldKeyShares,
+          newKeyShares,
+        );
       } else {
         // Otherwise initialize all sessions
         await this.init();
@@ -328,17 +350,20 @@ export class PseudonymService {
   }
 
   /**
-   * Pseudonymize an encrypted pseudonym through all transcryptors
+   * Pseudonymize an encrypted pseudonym through all transcryptors.
+   * Polymorphic: accepts both EncryptedPseudonym and LongEncryptedPseudonym.
    */
-  public async pseudonymize(
-    encryptedPseudonym: EncryptedPseudonym,
+  public async pseudonymize<T extends AnyEncryptedPseudonym>(
+    encryptedPseudonym: T,
     sessionsFrom: EncryptionContexts,
     domainFrom: PseudonymizationDomain,
     domainTo: PseudonymizationDomain,
-  ): Promise<EncryptedPseudonym> {
+  ): Promise<T> {
     if (!this.pepCryptoClient) {
       await this.init();
     }
+
+    let result = encryptedPseudonym;
 
     // Pseudonymize through each transcryptor
     for (let i = 0; i < this.transcryptors.length; i++) {
@@ -356,8 +381,8 @@ export class PseudonymService {
       }
 
       try {
-        encryptedPseudonym = await transcryptor.pseudonymize(
-          encryptedPseudonym,
+        result = await transcryptor.pseudonymize(
+          result,
           domainFrom,
           domainTo,
           sessionFrom,
@@ -371,8 +396,8 @@ export class PseudonymService {
           // If session is invalid, refresh it and try again
           await this.refreshSession(i);
 
-          encryptedPseudonym = await transcryptor.pseudonymize(
-            encryptedPseudonym,
+          result = await transcryptor.pseudonymize(
+            result,
             domainFrom,
             domainTo,
             sessionFrom,
@@ -386,21 +411,24 @@ export class PseudonymService {
       }
     }
 
-    return encryptedPseudonym;
+    return result;
   }
 
   /**
-   * Pseudonymize a batch of encrypted pseudonyms through all transcryptors
+   * Pseudonymize a batch of encrypted pseudonyms through all transcryptors.
+   * Polymorphic: accepts both EncryptedPseudonym[] and LongEncryptedPseudonym[].
    */
-  public async pseudonymizeBatch(
-    encryptedPseudonyms: EncryptedPseudonym[],
+  public async pseudonymizeBatch<T extends AnyEncryptedPseudonym>(
+    encryptedPseudonyms: T[],
     sessionsFrom: EncryptionContexts,
     domainFrom: PseudonymizationDomain,
     domainTo: PseudonymizationDomain,
-  ): Promise<EncryptedPseudonym[]> {
+  ): Promise<T[]> {
     if (!this.pepCryptoClient) {
       await this.init();
     }
+
+    let result = encryptedPseudonyms;
 
     // Pseudonymize through each transcryptor
     for (let i = 0; i < this.transcryptors.length; i++) {
@@ -418,8 +446,8 @@ export class PseudonymService {
       }
 
       try {
-        encryptedPseudonyms = await transcryptor.pseudonymizeBatch(
-          encryptedPseudonyms,
+        result = await transcryptor.pseudonymizeBatch(
+          result,
           domainFrom,
           domainTo,
           sessionFrom,
@@ -433,8 +461,8 @@ export class PseudonymService {
           // If session is invalid, refresh it and try again
           await this.refreshSession(i);
 
-          encryptedPseudonyms = await transcryptor.pseudonymizeBatch(
-            encryptedPseudonyms,
+          result = await transcryptor.pseudonymizeBatch(
+            result,
             domainFrom,
             domainTo,
             sessionFrom,
@@ -448,74 +476,22 @@ export class PseudonymService {
       }
     }
 
-    return encryptedPseudonyms;
+    return result;
   }
 
   /**
-   * Rekey an encrypted data point through all transcryptors
+   * Rekey an encrypted data point through all transcryptors.
+   * Polymorphic: accepts both EncryptedAttribute and LongEncryptedAttribute.
    */
-  public async rekey(
-    encryptedAttribute: EncryptedAttribute,
+  public async rekey<T extends AnyEncryptedAttribute>(
+    encryptedAttribute: T,
     sessionsFrom: EncryptionContexts,
-  ): Promise<EncryptedAttribute> {
+  ): Promise<T> {
     if (!this.pepCryptoClient) {
       await this.init();
     }
-    // Rekey through each transcryptor
-    for (let i = 0; i < this.transcryptors.length; i++) {
-      const transcryptor = this.transcryptors[i];
-      const systemId = transcryptor.getSystemId();
 
-      const sessionFrom = sessionsFrom.get(systemId);
-      if (!sessionFrom) {
-        throw PseudonymServiceError.missingSession(systemId);
-      }
-
-      const sessionTo = transcryptor.getSessionId();
-      if (!sessionTo) {
-        throw PseudonymServiceError.uninitializedTranscryptor();
-      }
-
-      try {
-        encryptedAttribute = await transcryptor.rekey(
-            encryptedAttribute,
-            sessionFrom,
-            sessionTo,
-        );
-      } catch (error) {
-        if (
-          error instanceof TranscryptorError &&
-          error.type === "InvalidSession"
-        ) {
-          // If session is invalid, refresh it and try again
-          await this.refreshSession(i);
-
-          encryptedAttribute = await transcryptor.rekey(
-              encryptedAttribute,
-              sessionFrom,
-              sessionTo,
-          );
-        } else if (error instanceof TranscryptorError) {
-          throw PseudonymServiceError.transcryptorError(error);
-        } else {
-          throw error;
-        }
-      }
-    }
-
-    return encryptedAttribute;
-  }
-
-  /**
-   * Rekey a batch of encrypted data points through all transcryptors
-   */
-  public async rekeyBatch(
-    encryptedAttributes: EncryptedAttribute[],
-    sessionsFrom: EncryptionContexts,
-  ): Promise<EncryptedAttribute[]> {
-    if (!this.pepCryptoClient) {
-      await this.init();
-    }
+    let result = encryptedAttribute;
 
     // Rekey through each transcryptor
     for (let i = 0; i < this.transcryptors.length; i++) {
@@ -533,8 +509,8 @@ export class PseudonymService {
       }
 
       try {
-        encryptedAttributes = await transcryptor.rekeyBatch(
-          encryptedAttributes,
+        result = await transcryptor.rekey(
+          result,
           sessionFrom,
           sessionTo,
         );
@@ -546,8 +522,8 @@ export class PseudonymService {
           // If session is invalid, refresh it and try again
           await this.refreshSession(i);
 
-          encryptedAttributes = await transcryptor.rekeyBatch(
-            encryptedAttributes,
+          result = await transcryptor.rekey(
+            result,
             sessionFrom,
             sessionTo,
           );
@@ -559,21 +535,83 @@ export class PseudonymService {
       }
     }
 
-    return encryptedAttributes;
+    return result;
   }
 
   /**
-   * Transcrypt entity data through all transcryptors
+   * Rekey a batch of encrypted data points through all transcryptors.
+   * Polymorphic: accepts both EncryptedAttribute[] and LongEncryptedAttribute[].
    */
-  public async transcrypt(
-    encrypted: EncryptedData[],
+  public async rekeyBatch<T extends AnyEncryptedAttribute>(
+    encryptedAttributes: T[],
     sessionsFrom: EncryptionContexts,
-    domainFrom: PseudonymizationDomain,
-    domainTo: PseudonymizationDomain,
-  ): Promise<EncryptedData[]> {
+  ): Promise<T[]> {
     if (!this.pepCryptoClient) {
       await this.init();
     }
+
+    let result = encryptedAttributes;
+
+    // Rekey through each transcryptor
+    for (let i = 0; i < this.transcryptors.length; i++) {
+      const transcryptor = this.transcryptors[i];
+      const systemId = transcryptor.getSystemId();
+
+      const sessionFrom = sessionsFrom.get(systemId);
+      if (!sessionFrom) {
+        throw PseudonymServiceError.missingSession(systemId);
+      }
+
+      const sessionTo = transcryptor.getSessionId();
+      if (!sessionTo) {
+        throw PseudonymServiceError.uninitializedTranscryptor();
+      }
+
+      try {
+        result = await transcryptor.rekeyBatch(
+          result,
+          sessionFrom,
+          sessionTo,
+        );
+      } catch (error) {
+        if (
+          error instanceof TranscryptorError &&
+          error.type === "InvalidSession"
+        ) {
+          // If session is invalid, refresh it and try again
+          await this.refreshSession(i);
+
+          result = await transcryptor.rekeyBatch(
+            result,
+            sessionFrom,
+            sessionTo,
+          );
+        } else if (error instanceof TranscryptorError) {
+          throw PseudonymServiceError.transcryptorError(error);
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Transcrypt entity data through all transcryptors.
+   * Polymorphic: accepts EncryptedData, LongEncryptedData, or EncryptedPEPJSONValue.
+   */
+  public async transcrypt<T extends AnyEncryptedData>(
+    encrypted: T,
+    sessionsFrom: EncryptionContexts,
+    domainFrom: PseudonymizationDomain,
+    domainTo: PseudonymizationDomain,
+  ): Promise<T> {
+    if (!this.pepCryptoClient) {
+      await this.init();
+    }
+
+    let result = encrypted;
 
     // Transcrypt through each transcryptor
     for (let i = 0; i < this.transcryptors.length; i++) {
@@ -591,8 +629,8 @@ export class PseudonymService {
       }
 
       try {
-        encrypted = await transcryptor.transcrypt(
-          encrypted,
+        result = await transcryptor.transcrypt(
+          result,
           domainFrom,
           domainTo,
           sessionFrom,
@@ -606,8 +644,8 @@ export class PseudonymService {
           // If session is invalid, refresh it and try again
           await this.refreshSession(i);
 
-          encrypted = await transcryptor.transcrypt(
-            encrypted,
+          result = await transcryptor.transcrypt(
+            result,
             domainFrom,
             domainTo,
             sessionFrom,
@@ -621,7 +659,72 @@ export class PseudonymService {
       }
     }
 
-    return encrypted;
+    return result;
+  }
+
+  /**
+   * Transcrypt a batch of entity data through all transcryptors.
+   * Polymorphic: accepts EncryptedData[], LongEncryptedData[], or EncryptedPEPJSONValue[].
+   */
+  public async transcryptBatch<T extends AnyEncryptedData>(
+    encrypted: T[],
+    sessionsFrom: EncryptionContexts,
+    domainFrom: PseudonymizationDomain,
+    domainTo: PseudonymizationDomain,
+  ): Promise<T[]> {
+    if (!this.pepCryptoClient) {
+      await this.init();
+    }
+
+    let result = encrypted;
+
+    // Transcrypt through each transcryptor
+    for (let i = 0; i < this.transcryptors.length; i++) {
+      const transcryptor = this.transcryptors[i];
+      const systemId = transcryptor.getSystemId();
+
+      const sessionFrom = sessionsFrom.get(systemId);
+      if (!sessionFrom) {
+        throw PseudonymServiceError.missingSession(systemId);
+      }
+
+      const sessionTo = transcryptor.getSessionId();
+      if (!sessionTo) {
+        throw PseudonymServiceError.uninitializedTranscryptor();
+      }
+
+      try {
+        result = await transcryptor.transcryptBatch(
+          result,
+          domainFrom,
+          domainTo,
+          sessionFrom,
+          sessionTo,
+        );
+      } catch (error) {
+        if (
+          error instanceof TranscryptorError &&
+          error.type === "InvalidSession"
+        ) {
+          // If session is invalid, refresh it and try again
+          await this.refreshSession(i);
+
+          result = await transcryptor.transcryptBatch(
+            result,
+            domainFrom,
+            domainTo,
+            sessionFrom,
+            sessionTo,
+          );
+        } else if (error instanceof TranscryptorError) {
+          throw PseudonymServiceError.transcryptorError(error);
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -645,6 +748,42 @@ export class PseudonymService {
       encrypted = this.pepCryptoClient.encryptData(message as Attribute);
     }
 
+    return [encrypted, this.getCurrentSessions()];
+  }
+
+  /**
+   * Batch encrypt pseudonyms using the PEPClient
+   */
+  public async encryptPseudonymBatch(
+    messages: Pseudonym[],
+  ): Promise<[EncryptedPseudonym[], EncryptionContexts]> {
+    if (!this.pepCryptoClient) {
+      await this.init();
+    }
+
+    if (!this.pepCryptoClient) {
+      throw PseudonymServiceError.uninitializedPEPClient();
+    }
+
+    const encrypted = this.pepCryptoClient.encryptPseudonymBatch(messages);
+    return [encrypted, this.getCurrentSessions()];
+  }
+
+  /**
+   * Batch encrypt attributes using the PEPClient
+   */
+  public async encryptDataBatch(
+    messages: Attribute[],
+  ): Promise<[EncryptedAttribute[], EncryptionContexts]> {
+    if (!this.pepCryptoClient) {
+      await this.init();
+    }
+
+    if (!this.pepCryptoClient) {
+      throw PseudonymServiceError.uninitializedPEPClient();
+    }
+
+    const encrypted = this.pepCryptoClient.encryptDataBatch(messages);
     return [encrypted, this.getCurrentSessions()];
   }
 
@@ -681,5 +820,27 @@ export class PseudonymService {
     } else {
       return this.pepCryptoClient.decryptData(encrypted as EncryptedAttribute);
     }
+  }
+
+  /**
+   * Batch decrypt encrypted pseudonyms using the PEPClient
+   */
+  public decryptPseudonymBatch(encrypted: EncryptedPseudonym[]): Pseudonym[] {
+    if (!this.pepCryptoClient) {
+      throw PseudonymServiceError.uninitializedPEPClient();
+    }
+
+    return this.pepCryptoClient.decryptPseudonymBatch(encrypted);
+  }
+
+  /**
+   * Batch decrypt encrypted attributes using the PEPClient
+   */
+  public decryptDataBatch(encrypted: EncryptedAttribute[]): Attribute[] {
+    if (!this.pepCryptoClient) {
+      throw PseudonymServiceError.uninitializedPEPClient();
+    }
+
+    return this.pepCryptoClient.decryptDataBatch(encrypted);
   }
 }

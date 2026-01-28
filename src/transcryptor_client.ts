@@ -1,13 +1,16 @@
 import {
-  AttributeSessionKeyShare, EncryptedAttribute,
-  EncryptedPseudonym, PseudonymSessionKeyShare, SessionKeyShares,
+  AttributeSessionKeyShare,
+  EncryptedAttribute,
+  EncryptedPseudonym,
+  LongEncryptedAttribute,
+  LongEncryptedPseudonym,
+  EncryptedPEPJSONValue,
+  PseudonymSessionKeyShare,
+  SessionKeyShares,
 } from "@nolai/libpep-wasm";
 
-import {EncryptedData, PseudonymizationDomain} from "./messages.js";
-import { EncryptionContext, SystemId } from "./sessions.js";
-import { PAASConfig, TranscryptorConfig } from "./config.js";
-import { Auth } from "./auth.js";
 import {
+  PseudonymizationDomain,
   VersionInfo,
   StatusResponse,
   StartSessionResponse,
@@ -15,15 +18,45 @@ import {
   EndSessionRequest,
   PseudonymizationRequest,
   PseudonymizationResponse,
+  LongPseudonymizationRequest,
+  LongPseudonymizationResponse,
   PseudonymizationBatchRequest,
   PseudonymizationBatchResponse,
+  LongPseudonymizationBatchRequest,
+  LongPseudonymizationBatchResponse,
   RekeyRequest,
   RekeyResponse,
+  LongRekeyRequest,
+  LongRekeyResponse,
   RekeyBatchRequest,
   RekeyBatchResponse,
+  LongRekeyBatchRequest,
+  LongRekeyBatchResponse,
   TranscryptionRequest,
   TranscryptionResponse,
+  LongTranscryptionRequest,
+  LongTranscryptionResponse,
+  TranscryptionBatchRequest,
+  TranscryptionBatchResponse,
+  LongTranscryptionBatchRequest,
+  LongTranscryptionBatchResponse,
+  JsonTranscryptionRequest,
+  JsonTranscryptionResponse,
+  JsonTranscryptionBatchRequest,
+  JsonTranscryptionBatchResponse,
+  EncryptedData,
+  LongEncryptedData,
+  AnyEncryptedPseudonym,
+  AnyEncryptedAttribute,
+  AnyEncryptedData,
+  isLongEncryptedPseudonym,
+  isLongEncryptedAttribute,
+  isEncryptedPEPJSONValue,
+  isLongEncryptedData,
 } from "./messages.js";
+import { EncryptionContext, SystemId } from "./sessions.js";
+import { PAASConfig, TranscryptorConfig } from "./config.js";
+import { Auth } from "./auth.js";
 import { PseudonymServiceError } from "./pseudonym_service.js";
 
 /**
@@ -325,9 +358,9 @@ export class TranscryptorClient {
       // Check version compatibility
       const clientVersion = {
         // eslint-disable-next-line camelcase
-        protocol_version: "0.3.0",
+        protocol_version: "0.10.0",
         // eslint-disable-next-line camelcase
-        min_supported_version: "0.3.0",
+        min_supported_version: "0.10.0",
       } as VersionInfo;
 
       if (!this.isCompatibleVersion(status.version_info, clientVersion)) {
@@ -397,18 +430,13 @@ export class TranscryptorClient {
         );
       }
 
-      console.log("Clientside config:", clientsideConfig);
-      console.log("Clientside Blinded", clientsideConfig.blinded_global_keys);
-      console.log("Serverside config:", config);
-      console.log("Serverside Blinded", config.blinded_global_keys);
-
       if (
-          (clientsideConfig.blinded_global_keys.attribute.toHex() !==
-          config.blinded_global_keys.attribute.toHex() )||
-          (clientsideConfig.blinded_global_keys.pseudonym.toHex() !==
-          config.blinded_global_keys.pseudonym.toHex()) ||
-          (clientsideConfig.global_public_keys.attribute.toHex() !== config.global_public_keys.attribute.toHex()) ||
-          (clientsideConfig.global_public_keys.pseudonym.toHex() !== config.global_public_keys.pseudonym.toHex())
+          (clientsideConfig.blinded_global_keys.attribute !==
+          config.blinded_global_keys.attribute )||
+          (clientsideConfig.blinded_global_keys.pseudonym !==
+          config.blinded_global_keys.pseudonym) ||
+          (clientsideConfig.global_public_keys.attribute !== config.global_public_keys.attribute) ||
+          (clientsideConfig.global_public_keys.pseudonym !== config.global_public_keys.pseudonym)
       ) {
         throw PseudonymServiceError.inconsistentConfig(
           transcryptorConfig.system_id,
@@ -447,7 +475,10 @@ export class TranscryptorClient {
         await this.processResponse<StartSessionResponse>(response);
 
       this.sessionId = sessionData.session_id;
-      this.keyShares = new SessionKeyShares(PseudonymSessionKeyShare.fromHex(sessionData.key_shares.pseudonym), AttributeSessionKeyShare.fromHex(sessionData.key_shares.attribute));
+      this.keyShares = new SessionKeyShares(
+        PseudonymSessionKeyShare.fromHex(sessionData.session_key_shares.pseudonym),
+        AttributeSessionKeyShare.fromHex(sessionData.session_key_shares.attribute),
+      );
 
       return {
         sessionId: sessionData.session_id,
@@ -525,20 +556,31 @@ export class TranscryptorClient {
     }
   }
 
+  // ===========================================================================
+  // Pseudonymization Methods
+  // ===========================================================================
+
   /**
-   * Pseudonymize an encrypted pseudonym
+   * Pseudonymize an encrypted pseudonym.
+   * Polymorphic: accepts both EncryptedPseudonym and LongEncryptedPseudonym,
+   * automatically routes to the correct endpoint, and returns the same type.
    */
-  async pseudonymize(
-    encryptedPseudonym: EncryptedPseudonym,
+  async pseudonymize<T extends AnyEncryptedPseudonym>(
+    encryptedPseudonym: T,
     domainFrom: PseudonymizationDomain,
     domainTo: PseudonymizationDomain,
     sessionFrom: EncryptionContext,
     sessionTo: EncryptionContext,
-  ): Promise<EncryptedPseudonym> {
+  ): Promise<T> {
     try {
-      const request: PseudonymizationRequest = {
+      const isLong = isLongEncryptedPseudonym(encryptedPseudonym);
+      const endpoint = isLong ? "/long/pseudonymize" : "/pseudonymize";
+
+      const request: PseudonymizationRequest | LongPseudonymizationRequest = {
         // eslint-disable-next-line camelcase
-        encrypted_pseudonym: encryptedPseudonym.toBase64(),
+        encrypted_pseudonym: isLong
+          ? (encryptedPseudonym as LongEncryptedPseudonym).serialize()
+          : (encryptedPseudonym as EncryptedPseudonym).toBase64(),
         // eslint-disable-next-line camelcase
         domain_from: domainFrom,
         // eslint-disable-next-line camelcase
@@ -550,7 +592,7 @@ export class TranscryptorClient {
       };
 
       const token = await this.auth.token();
-      const response = await fetch(this.makeUrl("/pseudonymize"), {
+      const response = await fetch(this.makeUrl(endpoint), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -559,9 +601,16 @@ export class TranscryptorClient {
         body: JSON.stringify(request),
       });
 
-      const data =
-        await this.processResponse<PseudonymizationResponse>(response);
-      return EncryptedPseudonym.fromBase64(data.encrypted_pseudonym);
+      const data = await this.processResponse<
+        PseudonymizationResponse | LongPseudonymizationResponse
+      >(response);
+
+      if (isLong) {
+        return LongEncryptedPseudonym.deserialize(
+          data.encrypted_pseudonym,
+        ) as T;
+      }
+      return EncryptedPseudonym.fromBase64(data.encrypted_pseudonym) as T;
     } catch (error) {
       if (error instanceof TranscryptorError) {
         throw error;
@@ -573,19 +622,35 @@ export class TranscryptorClient {
   }
 
   /**
-   * Pseudonymize a batch of encrypted pseudonyms
+   * Pseudonymize a batch of encrypted pseudonyms.
+   * Polymorphic: accepts both EncryptedPseudonym[] and LongEncryptedPseudonym[],
+   * automatically routes to the correct endpoint, and returns the same type.
    */
-  async pseudonymizeBatch(
-    encryptedPseudonyms: EncryptedPseudonym[],
+  async pseudonymizeBatch<T extends AnyEncryptedPseudonym>(
+    encryptedPseudonyms: T[],
     domainFrom: PseudonymizationDomain,
     domainTo: PseudonymizationDomain,
     sessionFrom: EncryptionContext,
     sessionTo: EncryptionContext,
-  ): Promise<EncryptedPseudonym[]> {
+  ): Promise<T[]> {
     try {
-      const request: PseudonymizationBatchRequest = {
+      // Determine type from first element (all must be same type)
+      const isLong =
+        encryptedPseudonyms.length > 0 &&
+        isLongEncryptedPseudonym(encryptedPseudonyms[0]);
+      const endpoint = isLong
+        ? "/long/pseudonymize/batch"
+        : "/pseudonymize/batch";
+
+      const request:
+        | PseudonymizationBatchRequest
+        | LongPseudonymizationBatchRequest = {
         // eslint-disable-next-line camelcase
-        encrypted_pseudonyms: encryptedPseudonyms.map((p) => p.toBase64()),
+        encrypted_pseudonyms: encryptedPseudonyms.map((p) =>
+          isLong
+            ? (p as LongEncryptedPseudonym).serialize()
+            : (p as EncryptedPseudonym).toBase64(),
+        ),
         // eslint-disable-next-line camelcase
         domain_from: domainFrom,
         // eslint-disable-next-line camelcase
@@ -597,7 +662,7 @@ export class TranscryptorClient {
       };
 
       const token = await this.auth.token();
-      const response = await fetch(this.makeUrl("/pseudonymize/batch"), {
+      const response = await fetch(this.makeUrl(endpoint), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -606,10 +671,17 @@ export class TranscryptorClient {
         body: JSON.stringify(request),
       });
 
-      const data =
-        await this.processResponse<PseudonymizationBatchResponse>(response);
-      return data.encrypted_pseudonyms.map((p) =>
-        EncryptedPseudonym.fromBase64(p),
+      const data = await this.processResponse<
+        PseudonymizationBatchResponse | LongPseudonymizationBatchResponse
+      >(response);
+
+      if (isLong) {
+        return data.encrypted_pseudonyms.map(
+          (p) => LongEncryptedPseudonym.deserialize(p) as T,
+        );
+      }
+      return data.encrypted_pseudonyms.map(
+        (p) => EncryptedPseudonym.fromBase64(p) as T,
       );
     } catch (error) {
       if (error instanceof TranscryptorError) {
@@ -621,18 +693,29 @@ export class TranscryptorClient {
     }
   }
 
+  // ===========================================================================
+  // Rekey Methods
+  // ===========================================================================
+
   /**
-   * Rekey an encrypted data point
+   * Rekey an encrypted attribute.
+   * Polymorphic: accepts both EncryptedAttribute and LongEncryptedAttribute,
+   * automatically routes to the correct endpoint, and returns the same type.
    */
-  async rekey(
-    encryptedAttribute: EncryptedAttribute,
+  async rekey<T extends AnyEncryptedAttribute>(
+    encryptedAttribute: T,
     sessionFrom: EncryptionContext,
     sessionTo: EncryptionContext,
-  ): Promise<EncryptedAttribute> {
+  ): Promise<T> {
     try {
-      const request: RekeyRequest = {
+      const isLong = isLongEncryptedAttribute(encryptedAttribute);
+      const endpoint = isLong ? "/long/rekey" : "/rekey";
+
+      const request: RekeyRequest | LongRekeyRequest = {
         // eslint-disable-next-line camelcase
-        encrypted_attribute: encryptedAttribute.toBase64(),
+        encrypted_attribute: isLong
+          ? (encryptedAttribute as LongEncryptedAttribute).serialize()
+          : (encryptedAttribute as EncryptedAttribute).toBase64(),
         // eslint-disable-next-line camelcase
         session_from: sessionFrom,
         // eslint-disable-next-line camelcase
@@ -640,7 +723,7 @@ export class TranscryptorClient {
       };
 
       const token = await this.auth.token();
-      const response = await fetch(this.makeUrl("/rekey"), {
+      const response = await fetch(this.makeUrl(endpoint), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -649,8 +732,16 @@ export class TranscryptorClient {
         body: JSON.stringify(request),
       });
 
-      const data = await this.processResponse<RekeyResponse>(response);
-      return EncryptedAttribute.fromBase64(data.encrypted_attribute);
+      const data = await this.processResponse<
+        RekeyResponse | LongRekeyResponse
+      >(response);
+
+      if (isLong) {
+        return LongEncryptedAttribute.deserialize(
+          data.encrypted_attribute,
+        ) as T;
+      }
+      return EncryptedAttribute.fromBase64(data.encrypted_attribute) as T;
     } catch (error) {
       if (error instanceof TranscryptorError) {
         throw error;
@@ -662,17 +753,29 @@ export class TranscryptorClient {
   }
 
   /**
-   * Rekey a batch of encrypted data points
+   * Rekey a batch of encrypted attributes.
+   * Polymorphic: accepts both EncryptedAttribute[] and LongEncryptedAttribute[],
+   * automatically routes to the correct endpoint, and returns the same type.
    */
-  async rekeyBatch(
-    encryptedAttributes: EncryptedAttribute[],
+  async rekeyBatch<T extends AnyEncryptedAttribute>(
+    encryptedAttributes: T[],
     sessionFrom: EncryptionContext,
     sessionTo: EncryptionContext,
-  ): Promise<EncryptedAttribute[]> {
+  ): Promise<T[]> {
     try {
-      const request: RekeyBatchRequest = {
+      // Determine type from first element (all must be same type)
+      const isLong =
+        encryptedAttributes.length > 0 &&
+        isLongEncryptedAttribute(encryptedAttributes[0]);
+      const endpoint = isLong ? "/long/rekey/batch" : "/rekey/batch";
+
+      const request: RekeyBatchRequest | LongRekeyBatchRequest = {
         // eslint-disable-next-line camelcase
-        encrypted_attributes: encryptedAttributes.map((d) => d.toBase64()),
+        encrypted_attributes: encryptedAttributes.map((a) =>
+          isLong
+            ? (a as LongEncryptedAttribute).serialize()
+            : (a as EncryptedAttribute).toBase64(),
+        ),
         // eslint-disable-next-line camelcase
         session_from: sessionFrom,
         // eslint-disable-next-line camelcase
@@ -680,7 +783,7 @@ export class TranscryptorClient {
       };
 
       const token = await this.auth.token();
-      const response = await fetch(this.makeUrl("/rekey/batch"), {
+      const response = await fetch(this.makeUrl(endpoint), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -689,8 +792,18 @@ export class TranscryptorClient {
         body: JSON.stringify(request),
       });
 
-      const data = await this.processResponse<RekeyBatchResponse>(response);
-      return data.encrypted_attributes.map((d) => EncryptedAttribute.fromBase64(d));
+      const data = await this.processResponse<
+        RekeyBatchResponse | LongRekeyBatchResponse
+      >(response);
+
+      if (isLong) {
+        return data.encrypted_attributes.map(
+          (a) => LongEncryptedAttribute.deserialize(a) as T,
+        );
+      }
+      return data.encrypted_attributes.map(
+        (a) => EncryptedAttribute.fromBase64(a) as T,
+      );
     } catch (error) {
       if (error instanceof TranscryptorError) {
         throw error;
@@ -701,54 +814,129 @@ export class TranscryptorClient {
     }
   }
 
+  // ===========================================================================
+  // Transcryption Methods
+  // ===========================================================================
+
   /**
-   * Transcrypt data consisting of multiple pseudonyms and data points
+   * Transcrypt a single encrypted data item.
+   * Polymorphic: accepts EncryptedData, LongEncryptedData, or EncryptedPEPJSONValue,
+   * automatically routes to the correct endpoint, and returns the same type.
    */
-  async transcrypt(
-    encrypted: EncryptedData[],
+  async transcrypt<T extends AnyEncryptedData>(
+    encrypted: T,
     domainFrom: PseudonymizationDomain,
     domainTo: PseudonymizationDomain,
     sessionFrom: EncryptionContext,
     sessionTo: EncryptionContext,
-  ): Promise<EncryptedData[]> {
+  ): Promise<T> {
     try {
-      const request: TranscryptionRequest = {
-        encrypted: encrypted.map((e) => [
-          e.encrypted_pseudonym.map((pseu) => pseu.toBase64()),
-          e.encrypted_attribute.map((dp) => dp.toBase64()),
-        ]),
-        // eslint-disable-next-line camelcase
-        domain_from: domainFrom,
-        // eslint-disable-next-line camelcase
-        domain_to: domainTo,
-        // eslint-disable-next-line camelcase
-        session_from: sessionFrom,
-        // eslint-disable-next-line camelcase
-        session_to: sessionTo,
-      };
+      // Determine endpoint and serialize based on data type
+      if (isEncryptedPEPJSONValue(encrypted)) {
+        const request: JsonTranscryptionRequest = {
+          encrypted: encrypted.toJSON(),
+          // eslint-disable-next-line camelcase
+          domain_from: domainFrom,
+          // eslint-disable-next-line camelcase
+          domain_to: domainTo,
+          // eslint-disable-next-line camelcase
+          session_from: sessionFrom,
+          // eslint-disable-next-line camelcase
+          session_to: sessionTo,
+        };
 
-      const token = await this.auth.token();
-      const response = await fetch(this.makeUrl("/transcrypt"), {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(request),
-      });
+        const token = await this.auth.token();
+        const response = await fetch(this.makeUrl("/json/transcrypt"), {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(request),
+        });
 
-      const data = await this.processResponse<TranscryptionResponse>(response);
+        const data =
+          await this.processResponse<JsonTranscryptionResponse>(response);
+        return EncryptedPEPJSONValue.fromJSON(data.encrypted) as T;
+      } else if (isLongEncryptedData(encrypted)) {
+        const d = encrypted as LongEncryptedData;
+        const request: LongTranscryptionRequest = {
+          encrypted: [
+            d.encrypted_pseudonym.map((p) => p.serialize()),
+            d.encrypted_attribute.map((a) => a.serialize()),
+          ],
+          // eslint-disable-next-line camelcase
+          domain_from: domainFrom,
+          // eslint-disable-next-line camelcase
+          domain_to: domainTo,
+          // eslint-disable-next-line camelcase
+          session_from: sessionFrom,
+          // eslint-disable-next-line camelcase
+          session_to: sessionTo,
+        };
 
-      return data.encrypted.map((e) => ({
-        // eslint-disable-next-line camelcase
-        encrypted_pseudonym: e[0].map((pseu) =>
-          EncryptedPseudonym.fromBase64(pseu),
-        ),
-        // eslint-disable-next-line camelcase
-        encrypted_attribute: e[1].map((dp) =>
-          EncryptedAttribute.fromBase64(dp),
-        ),
-      }));
+        const token = await this.auth.token();
+        const response = await fetch(this.makeUrl("/long/transcrypt"), {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(request),
+        });
+
+        const data =
+          await this.processResponse<LongTranscryptionResponse>(response);
+        return {
+          // eslint-disable-next-line camelcase
+          encrypted_pseudonym: data.encrypted[0].map((p) =>
+            LongEncryptedPseudonym.deserialize(p),
+          ),
+          // eslint-disable-next-line camelcase
+          encrypted_attribute: data.encrypted[1].map((a) =>
+            LongEncryptedAttribute.deserialize(a),
+          ),
+        } as T;
+      } else {
+        const d = encrypted as EncryptedData;
+        const request: TranscryptionRequest = {
+          encrypted: [
+            d.encrypted_pseudonym.map((p) => p.toBase64()),
+            d.encrypted_attribute.map((a) => a.toBase64()),
+          ],
+          // eslint-disable-next-line camelcase
+          domain_from: domainFrom,
+          // eslint-disable-next-line camelcase
+          domain_to: domainTo,
+          // eslint-disable-next-line camelcase
+          session_from: sessionFrom,
+          // eslint-disable-next-line camelcase
+          session_to: sessionTo,
+        };
+
+        const token = await this.auth.token();
+        const response = await fetch(this.makeUrl("/transcrypt"), {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(request),
+        });
+
+        const data =
+          await this.processResponse<TranscryptionResponse>(response);
+        return {
+          // eslint-disable-next-line camelcase
+          encrypted_pseudonym: data.encrypted[0].map((p) =>
+            EncryptedPseudonym.fromBase64(p),
+          ),
+          // eslint-disable-next-line camelcase
+          encrypted_attribute: data.encrypted[1].map((a) =>
+            EncryptedAttribute.fromBase64(a),
+          ),
+        } as T;
+      }
     } catch (error) {
       if (error instanceof TranscryptorError) {
         throw error;
@@ -758,6 +946,151 @@ export class TranscryptorClient {
       );
     }
   }
+
+  /**
+   * Transcrypt a batch of encrypted data items.
+   * Polymorphic: accepts EncryptedData[], LongEncryptedData[], or EncryptedPEPJSONValue[],
+   * automatically routes to the correct endpoint, and returns the same type.
+   */
+  async transcryptBatch<T extends AnyEncryptedData>(
+    encrypted: T[],
+    domainFrom: PseudonymizationDomain,
+    domainTo: PseudonymizationDomain,
+    sessionFrom: EncryptionContext,
+    sessionTo: EncryptionContext,
+  ): Promise<T[]> {
+    try {
+      if (encrypted.length === 0) {
+        return [];
+      }
+
+      // Determine endpoint and serialize based on first item's type
+      if (isEncryptedPEPJSONValue(encrypted[0])) {
+        const request: JsonTranscryptionBatchRequest = {
+          encrypted: (encrypted as EncryptedPEPJSONValue[]).map((e) =>
+            e.toJSON(),
+          ),
+          // eslint-disable-next-line camelcase
+          domain_from: domainFrom,
+          // eslint-disable-next-line camelcase
+          domain_to: domainTo,
+          // eslint-disable-next-line camelcase
+          session_from: sessionFrom,
+          // eslint-disable-next-line camelcase
+          session_to: sessionTo,
+        };
+
+        const token = await this.auth.token();
+        const response = await fetch(this.makeUrl("/json/transcrypt/batch"), {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(request),
+        });
+
+        const data =
+          await this.processResponse<JsonTranscryptionBatchResponse>(response);
+        return data.encrypted.map(
+          (e) => EncryptedPEPJSONValue.fromJSON(e) as T,
+        );
+      } else if (isLongEncryptedData(encrypted[0])) {
+        const request: LongTranscryptionBatchRequest = {
+          encrypted: (encrypted as LongEncryptedData[]).map((e) => [
+            e.encrypted_pseudonym.map((p) => p.serialize()),
+            e.encrypted_attribute.map((a) => a.serialize()),
+          ]),
+          // eslint-disable-next-line camelcase
+          domain_from: domainFrom,
+          // eslint-disable-next-line camelcase
+          domain_to: domainTo,
+          // eslint-disable-next-line camelcase
+          session_from: sessionFrom,
+          // eslint-disable-next-line camelcase
+          session_to: sessionTo,
+        };
+
+        const token = await this.auth.token();
+        const response = await fetch(this.makeUrl("/long/transcrypt/batch"), {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(request),
+        });
+
+        const data =
+          await this.processResponse<LongTranscryptionBatchResponse>(response);
+        return data.encrypted.map(
+          (e) =>
+            ({
+              // eslint-disable-next-line camelcase
+              encrypted_pseudonym: e[0].map((p) =>
+                LongEncryptedPseudonym.deserialize(p),
+              ),
+              // eslint-disable-next-line camelcase
+              encrypted_attribute: e[1].map((a) =>
+                LongEncryptedAttribute.deserialize(a),
+              ),
+            }) as T,
+        );
+      } else {
+        const request: TranscryptionBatchRequest = {
+          encrypted: (encrypted as EncryptedData[]).map((e) => [
+            e.encrypted_pseudonym.map((p) => p.toBase64()),
+            e.encrypted_attribute.map((a) => a.toBase64()),
+          ]),
+          // eslint-disable-next-line camelcase
+          domain_from: domainFrom,
+          // eslint-disable-next-line camelcase
+          domain_to: domainTo,
+          // eslint-disable-next-line camelcase
+          session_from: sessionFrom,
+          // eslint-disable-next-line camelcase
+          session_to: sessionTo,
+        };
+
+        const token = await this.auth.token();
+        const response = await fetch(this.makeUrl("/transcrypt/batch"), {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(request),
+        });
+
+        const data =
+          await this.processResponse<TranscryptionBatchResponse>(response);
+        return data.encrypted.map(
+          (e) =>
+            ({
+              // eslint-disable-next-line camelcase
+              encrypted_pseudonym: e[0].map((p) =>
+                EncryptedPseudonym.fromBase64(p),
+              ),
+              // eslint-disable-next-line camelcase
+              encrypted_attribute: e[1].map((a) =>
+                EncryptedAttribute.fromBase64(a),
+              ),
+            }) as T,
+        );
+      }
+    } catch (error) {
+      if (error instanceof TranscryptorError) {
+        throw error;
+      }
+      throw TranscryptorError.networkError(
+        `Failed to transcrypt batch: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  // ===========================================================================
+  // Getter Methods
+  // ===========================================================================
 
   /**
    * Get the system ID

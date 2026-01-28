@@ -1,21 +1,23 @@
 import {
   PseudonymService,
-    PAASConfig,
+  PAASConfig,
   TranscryptorConfig,
   EncryptionContexts,
   SystemAuths,
-  SystemId
+  SystemId,
 } from "../dist/paas-client.js";
 // @ts-ignore
 import {
-    AttributeGlobalPublicKey,
-    BlindedAttributeGlobalSecretKey,
-    BlindedGlobalKeys, BlindedPseudonymGlobalSecretKey,
-    EncryptedPseudonym, GlobalPublicKeys, PseudonymGlobalPublicKey,
+  AttributeGlobalPublicKey,
+  BlindedAttributeGlobalSecretKey,
+  BlindedGlobalKeys,
+  BlindedPseudonymGlobalSecretKey,
+  EncryptedPseudonym,
+  GlobalPublicKeys,
+  PseudonymGlobalPublicKey,
 } from "@nolai/libpep-wasm";
 import { setupServer } from "msw/node";
 import { http } from "msw";
-
 
 // Public global keys:
 //   - Attributes: 94169b3b23113849006b385e568a916be16d91f5869ff9b01bd14ca41e79a848
@@ -27,20 +29,20 @@ import { http } from "msw";
 //   - 1f861128928bb615582ddc4dfd22ac378ad82af99455fe81b7bd4751ede82d0c
 //   - c0e4850c6e591cab3e68db39987dbde52870f2173631f4bb57b926601f083402
 
-
 const config: PAASConfig = {
-    // eslint-disable-next-line camelcase
-    blinded_global_keys: new BlindedGlobalKeys(
-        BlindedPseudonymGlobalSecretKey.fromHex("6cc6d8c611e2ce3ab06c2328954726d50505419d92160bb21e128fd49397940d"),
-        BlindedAttributeGlobalSecretKey.fromHex("d92ff4a5a268cf38a0d1478e56007987dc339af1356afaf606fc55845abb2a03")
-    )
-  ,
-    // eslint-disable-next-line camelcase
-  global_public_keys: new GlobalPublicKeys(
-      PseudonymGlobalPublicKey.fromHex("c49a19c142ee9c03624bdb4ee33e3072ab1fb9a10a5586c8c6001ebf7e72531c"),
-      AttributeGlobalPublicKey.fromHex("94169b3b23113849006b385e568a916be16d91f5869ff9b01bd14ca41e79a848")
-  )
-  ,
+  // eslint-disable-next-line camelcase
+  blinded_global_keys: {
+      pseudonym:
+      "6cc6d8c611e2ce3ab06c2328954726d50505419d92160bb21e128fd49397940d",
+      attribute:
+      "d92ff4a5a268cf38a0d1478e56007987dc339af1356afaf606fc55845abb2a03",
+},
+  // eslint-disable-next-line camelcase
+  global_public_keys: {
+    pseudonym: "c49a19c142ee9c03624bdb4ee33e3072ab1fb9a10a5586c8c6001ebf7e72531c",
+    attribute:
+      "94169b3b23113849006b385e568a916be16d91f5869ff9b01bd14ca41e79a848",
+  },
   transcryptors: [
     new TranscryptorConfig("test_system_1", "http://localhost:8080"),
     new TranscryptorConfig("test_system_2", "http://localhost:8081"),
@@ -66,9 +68,11 @@ server.use(
         // eslint-disable-next-line camelcase
         session_id: "test_session_1",
         // eslint-disable-next-line camelcase
-        key_shares: {
-          pseudonym: "5f5289d6909083257b9372c362a1905a0f0370181c5b75af812815513edcda0a",
-          attribute: "5f5289d6909083257b9372c362a1905a0f0370181c5b75af812815513edcda0a"
+          session_key_shares: {
+          pseudonym:
+            "5f5289d6909083257b9372c362a1905a0f0370181c5b75af812815513edcda0a",
+          attribute:
+            "5f5289d6909083257b9372c362a1905a0f0370181c5b75af812815513edcda0a",
         },
       }),
       {
@@ -87,9 +91,11 @@ server.use(
         // eslint-disable-next-line camelcase
         session_id: "test_session_2",
         // eslint-disable-next-line camelcase
-        key_shares: {
-          pseudonym: "5f5289d6909083257b9372c362a1905a0f0370181c5b75af812815513edcda0a",
-          attribute: "5f5289d6909083257b9372c362a1905a0f0370181c5b75af812815513edcda0a"
+        session_key_shares: {
+          pseudonym:
+            "5f5289d6909083257b9372c362a1905a0f0370181c5b75af812815513edcda0a",
+          attribute:
+            "5f5289d6909083257b9372c362a1905a0f0370181c5b75af812815513edcda0a",
         },
       }),
       {
@@ -147,94 +153,115 @@ server.use(
     );
   }),
 
-    http.get("http://localhost:8080/status", async ({ request }) => {
-      const authHeader = request.headers.get("Authorization");
-      expect(authHeader).toBe("Bearer test_token_1");
-
-      return new Response(
-        JSON.stringify({
-          timestamp: "2021-10-14T15:00:00Z",
+  http.get("http://localhost:8080/status", async () => {
+    return new Response(
+      JSON.stringify({
+        timestamp: "2021-10-14T15:00:00Z",
+        // eslint-disable-next-line camelcase
+        system_id: "test_system_1",
+        // eslint-disable-next-line camelcase
+        version_info: {
           // eslint-disable-next-line camelcase
-          system_id: "test_system_1",
+          protocol_version: "0.10.0",
           // eslint-disable-next-line camelcase
-          version_info: {
-            // eslint-disable-next-line camelcase
-            protocol_version: "0.1.0",
-            // eslint-disable-next-line camelcase
-            min_protocol_version: "0.1.0",
-          },
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
+          min_supported_version: "0.10.0",
         },
-      );
-    }),
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }),
 
-    http.get("http://localhost:8081/status", async ({ request }) => {
-      const authHeader = request.headers.get("Authorization");
-      expect(authHeader).toBe("Bearer test_token_2");
+  http.get("http://localhost:8081/status", async () => {
+    return new Response(
+      JSON.stringify({
+        timestamp: "2021-10-14T15:00:00Z",
+        // eslint-disable-next-line camelcase
+        system_id: "test_system_2",
+        // eslint-disable-next-line camelcase
+        version_info: {
+          // eslint-disable-next-line camelcase
+          protocol_version: "0.10.0",
+          // eslint-disable-next-line camelcase
+          min_supported_version: "0.10.0",
+        },
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }),
 
-        return new Response(
-            JSON.stringify({
-            timestamp: "2021-10-14T15:00:00Z",
-            // eslint-disable-next-line camelcase
-            system_id: "test_system_2",
-            // eslint-disable-next-line camelcase
-            version_info: {
-              // eslint-disable-next-line camelcase
-              protocol_version: "0.1.0",
-              // eslint-disable-next-line camelcase
-              min_protocol_version: "0.1.0",
-            },
-            }),
-            {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-            },
-        );
-    }),
+  http.get("http://localhost:8080/config", async ({ request }) => {
+    const authHeader = request.headers.get("Authorization");
+    expect(authHeader).toBe("Bearer test_token_1");
 
-    http.get("http://localhost:8080/config", async ({ request }) => {
-        const authHeader = request.headers.get("Authorization");
-        expect(authHeader).toBe("Bearer test_token_1");
+    return new Response(
+      JSON.stringify({
+        // eslint-disable-next-line camelcase
+        blinded_global_keys: {
+          pseudonym:
+            "6cc6d8c611e2ce3ab06c2328954726d50505419d92160bb21e128fd49397940d",
+          attribute:
+            "d92ff4a5a268cf38a0d1478e56007987dc339af1356afaf606fc55845abb2a03",
+        },
+        // eslint-disable-next-line camelcase
+        global_public_keys: {
+          pseudonym:
+            "c49a19c142ee9c03624bdb4ee33e3072ab1fb9a10a5586c8c6001ebf7e72531c",
+          attribute:
+            "94169b3b23113849006b385e568a916be16d91f5869ff9b01bd14ca41e79a848",
+        },
+        transcryptors: [
+          // eslint-disable-next-line camelcase
+          { system_id: "test_system_1", url: "http://localhost:8080" },
+          // eslint-disable-next-line camelcase
+          { system_id: "test_system_2", url: "http://localhost:8081" },
+        ],
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }),
 
-        return new Response(
-            JSON.stringify({
-              // eslint-disable-next-line camelcase
-              blinded_global_keys: {
-                pseudonym: "6cc6d8c611e2ce3ab06c2328954726d50505419d92160bb21e128fd49397940d",
-                attribute: "d92ff4a5a268cf38a0d1478e56007987dc339af1356afaf606fc55845abb2a03"
-              },
-              // eslint-disable-next-line camelcase
-              global_public_keys: {
-                pseudonym: "c49a19c142ee9c03624bdb4ee33e3072ab1fb9a10a5586c8c6001ebf7e72531c",
-                attribute: "94169b3b23113849006b385e568a916be16d91f5869ff9b01bd14ca41e79a848"
-              },
-              transcryptors: [
-                { system_id: "test_system_1", url: "http://localhost:8080" },
-                { system_id: "test_system_2", url: "http://localhost:8081" },
-              ]
-            }),
-            {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-            },
-        );
-    }),
+  http.get("http://localhost:8081/config", async ({ request }) => {
+    const authHeader = request.headers.get("Authorization");
+    expect(authHeader).toBe("Bearer test_token_2");
 
-    http.get("http://localhost:8081/config", async ({ request }) => {
-      const authHeader = request.headers.get("Authorization");
-      expect(authHeader).toBe("Bearer test_token_2");
-
-      return new Response(
-          JSON.stringify(config),
-          {
-            status: 200,
-            headers: {"Content-Type": "application/json"},
-          },
-      );
-    }),
+    return new Response(
+      JSON.stringify({
+        // eslint-disable-next-line camelcase
+        blinded_global_keys: {
+          pseudonym:
+            "6cc6d8c611e2ce3ab06c2328954726d50505419d92160bb21e128fd49397940d",
+          attribute:
+            "d92ff4a5a268cf38a0d1478e56007987dc339af1356afaf606fc55845abb2a03",
+        },
+        // eslint-disable-next-line camelcase
+        global_public_keys: {
+          pseudonym:
+            "c49a19c142ee9c03624bdb4ee33e3072ab1fb9a10a5586c8c6001ebf7e72531c",
+          attribute:
+            "94169b3b23113849006b385e568a916be16d91f5869ff9b01bd14ca41e79a848",
+        },
+        transcryptors: [
+          // eslint-disable-next-line camelcase
+          { system_id: "test_system_1", url: "http://localhost:8080" },
+          // eslint-disable-next-line camelcase
+          { system_id: "test_system_2", url: "http://localhost:8081" },
+        ],
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }),
 );
 
 describe("PaaS js client tests", () => {
@@ -275,7 +302,7 @@ describe("PaaS js client tests", () => {
 
     const pseudonym = service.decrypt(result);
     expect(pseudonym.toHex()).toEqual(
-      "40280c88c76aa1ecdd567129d5ea7821a0b79b25bbe5eb2220eedc215feb450b",
+      "a057b1e508716f696d42c7a27365d4336009ab52ab7ad15bb2672bccba1a673a",
     );
   }, 60000);
 });
