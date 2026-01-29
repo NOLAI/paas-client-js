@@ -522,7 +522,7 @@ export class TranscryptorClient {
   async getSessions(): Promise<EncryptionContext[]> {
     try {
       const token = await this.auth.token();
-      const response = await fetch(this.makeUrl("/sessions/get"), {
+      const response = await fetch(this.makeUrl("/sessions"), {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -596,7 +596,9 @@ export class TranscryptorClient {
   ): Promise<T> {
     try {
       const isLong = isLongEncryptedPseudonym(encryptedPseudonym);
-      const endpoint = isLong ? "/long/pseudonymize" : "/pseudonymize";
+      const endpoint = isLong
+        ? "/pseudonymize/long_pseudonym"
+        : "/pseudonymize/pseudonym";
 
       const request: PseudonymizationRequest | LongPseudonymizationRequest = {
         // eslint-disable-next-line camelcase
@@ -661,8 +663,8 @@ export class TranscryptorClient {
         encryptedPseudonyms.length > 0 &&
         isLongEncryptedPseudonym(encryptedPseudonyms[0]);
       const endpoint = isLong
-        ? "/long/pseudonymize/batch"
-        : "/pseudonymize/batch";
+        ? "/pseudonymize_batch/long_pseudonym"
+        : "/pseudonymize_batch/pseudonym";
 
       const request:
         | PseudonymizationBatchRequest
@@ -731,7 +733,7 @@ export class TranscryptorClient {
   ): Promise<T> {
     try {
       const isLong = isLongEncryptedAttribute(encryptedAttribute);
-      const endpoint = isLong ? "/long/rekey" : "/rekey";
+      const endpoint = isLong ? "/rekey/long_attribute" : "/rekey/attribute";
 
       const request: RekeyRequest | LongRekeyRequest = {
         // eslint-disable-next-line camelcase
@@ -789,7 +791,9 @@ export class TranscryptorClient {
       const isLong =
         encryptedAttributes.length > 0 &&
         isLongEncryptedAttribute(encryptedAttributes[0]);
-      const endpoint = isLong ? "/long/rekey/batch" : "/rekey/batch";
+      const endpoint = isLong
+        ? "/rekey_batch/long_attribute"
+        : "/rekey_batch/attribute";
 
       const request: RekeyBatchRequest | LongRekeyBatchRequest = {
         // eslint-disable-next-line camelcase
@@ -868,7 +872,7 @@ export class TranscryptorClient {
         };
 
         const token = await this.auth.token();
-        const response = await fetch(this.makeUrl("/json/transcrypt"), {
+        const response = await fetch(this.makeUrl("/transcrypt/json"), {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -898,7 +902,7 @@ export class TranscryptorClient {
         };
 
         const token = await this.auth.token();
-        const response = await fetch(this.makeUrl("/long/transcrypt"), {
+        const response = await fetch(this.makeUrl("/transcrypt/long_record"), {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -937,7 +941,7 @@ export class TranscryptorClient {
         };
 
         const token = await this.auth.token();
-        const response = await fetch(this.makeUrl("/transcrypt"), {
+        const response = await fetch(this.makeUrl("/transcrypt/record"), {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -1003,7 +1007,7 @@ export class TranscryptorClient {
         };
 
         const token = await this.auth.token();
-        const response = await fetch(this.makeUrl("/json/transcrypt/batch"), {
+        const response = await fetch(this.makeUrl("/transcrypt_batch/json"), {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -1034,14 +1038,17 @@ export class TranscryptorClient {
         };
 
         const token = await this.auth.token();
-        const response = await fetch(this.makeUrl("/long/transcrypt/batch"), {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+        const response = await fetch(
+          this.makeUrl("/transcrypt_batch/long_record"),
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(request),
           },
-          body: JSON.stringify(request),
-        });
+        );
 
         const data =
           await this.processResponse<LongTranscryptionBatchResponse>(response);
@@ -1075,7 +1082,7 @@ export class TranscryptorClient {
         };
 
         const token = await this.auth.token();
-        const response = await fetch(this.makeUrl("/transcrypt/batch"), {
+        const response = await fetch(this.makeUrl("/transcrypt_batch/record"), {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,

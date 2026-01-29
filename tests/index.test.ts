@@ -106,53 +106,59 @@ server.use(
     );
   }),
 
-  http.post("http://localhost:8080/pseudonymize", async ({ request }) => {
-    const authHeader = request.headers.get("Authorization");
-    expect(authHeader).toBe("Bearer test_token_1");
+  http.post(
+    "http://localhost:8080/pseudonymize/pseudonym",
+    async ({ request }) => {
+      const authHeader = request.headers.get("Authorization");
+      expect(authHeader).toBe("Bearer test_token_1");
 
-    const body = await request.json();
-    expect(body).toHaveProperty("encrypted_pseudonym");
-    expect(body).toHaveProperty("domain_from", "domain1");
-    expect(body).toHaveProperty("domain_to", "domain2");
-    expect(body).toHaveProperty("session_from", "session_1");
-    expect(body).toHaveProperty("session_to", "test_session_1");
+      const body = await request.json();
+      expect(body).toHaveProperty("encrypted_pseudonym");
+      expect(body).toHaveProperty("domain_from", "domain1");
+      expect(body).toHaveProperty("domain_to", "domain2");
+      expect(body).toHaveProperty("session_from", "session_1");
+      expect(body).toHaveProperty("session_to", "test_session_1");
 
-    return new Response(
-      JSON.stringify({
-        // eslint-disable-next-line camelcase
-        encrypted_pseudonym:
-          "gqmiHiFA8dMdNtbCgsJ-EEfT9fjTV91BrfcHKN57e2vaLR2_UJEVExd6o9tdZg7vKGQklYZwV3REOaOQedKtUA==",
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
-  }),
+      return new Response(
+        JSON.stringify({
+          // eslint-disable-next-line camelcase
+          encrypted_pseudonym:
+            "gqmiHiFA8dMdNtbCgsJ-EEfT9fjTV91BrfcHKN57e2vaLR2_UJEVExd6o9tdZg7vKGQklYZwV3REOaOQedKtUA==",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    },
+  ),
 
-  http.post("http://localhost:8081/pseudonymize", async ({ request }) => {
-    const authHeader = request.headers.get("Authorization");
-    expect(authHeader).toBe("Bearer test_token_2");
+  http.post(
+    "http://localhost:8081/pseudonymize/pseudonym",
+    async ({ request }) => {
+      const authHeader = request.headers.get("Authorization");
+      expect(authHeader).toBe("Bearer test_token_2");
 
-    const body = await request.json();
-    expect(body).toHaveProperty("encrypted_pseudonym");
-    expect(body).toHaveProperty("domain_from", "domain1");
-    expect(body).toHaveProperty("domain_to", "domain2");
-    expect(body).toHaveProperty("session_from", "session_2");
-    expect(body).toHaveProperty("session_to", "test_session_2");
+      const body = await request.json();
+      expect(body).toHaveProperty("encrypted_pseudonym");
+      expect(body).toHaveProperty("domain_from", "domain1");
+      expect(body).toHaveProperty("domain_to", "domain2");
+      expect(body).toHaveProperty("session_from", "session_2");
+      expect(body).toHaveProperty("session_to", "test_session_2");
 
-    return new Response(
-      JSON.stringify({
-        // eslint-disable-next-line camelcase
-        encrypted_pseudonym:
-          "gqmiHiFA8dMdNtbCgsJ-EEfT9fjTV91BrfcHKN57e2vaLR2_UJEVExd6o9tdZg7vKGQklYZwV3REOaOQedKtUA==",
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
-  }),
+      return new Response(
+        JSON.stringify({
+          // eslint-disable-next-line camelcase
+          encrypted_pseudonym:
+            "gqmiHiFA8dMdNtbCgsJ-EEfT9fjTV91BrfcHKN57e2vaLR2_UJEVExd6o9tdZg7vKGQklYZwV3REOaOQedKtUA==",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    },
+  ),
 
   http.get("http://localhost:8080/status", async () => {
     return new Response(
