@@ -18,7 +18,13 @@ export class TranscryptorConfig {
  * Configuration for the PAAS service
  */
 export interface PAASConfig {
-  blinded_global_secret_key: string;
-  global_public_key: string;
+  blinded_global_keys: {
+    pseudonym: string;
+    attribute: string;
+  };
+  global_public_keys: {
+    pseudonym: string;
+    attribute: string;
+  };
   transcryptors: TranscryptorConfig[];
 }

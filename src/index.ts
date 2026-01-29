@@ -2,7 +2,7 @@ export {
   PseudonymService,
   PseudonymServiceError,
   PseudonymServiceErrorType,
-  SessionKeyShares,
+  SystemSessionKeyShares,
   PseudonymServiceDump,
 } from "./pseudonym_service.js";
 export {
@@ -27,22 +27,59 @@ export {
   type EncryptionContextsEncoded,
 } from "./sessions.js";
 export {
+  // Basic types
   PseudonymizationDomain,
   VersionInfo,
   StatusResponse,
   StartSessionResponse,
   SessionResponse,
   EndSessionRequest,
+  EncryptedDataJson,
+  // Normal pseudonymization request/response types
   PseudonymizationRequest,
   PseudonymizationResponse,
   PseudonymizationBatchRequest,
   PseudonymizationBatchResponse,
+  // Long pseudonymization request/response types
+  LongPseudonymizationRequest,
+  LongPseudonymizationResponse,
+  LongPseudonymizationBatchRequest,
+  LongPseudonymizationBatchResponse,
+  // Normal rekey request/response types
   RekeyRequest,
   RekeyResponse,
   RekeyBatchRequest,
   RekeyBatchResponse,
+  // Long rekey request/response types
+  LongRekeyRequest,
+  LongRekeyResponse,
+  LongRekeyBatchRequest,
+  LongRekeyBatchResponse,
+  // Normal transcryption request/response types
   TranscryptionRequest,
   TranscryptionResponse,
-  EncryptedEntityData,
-  EncryptedEntityDataJson,
+  TranscryptionBatchRequest,
+  TranscryptionBatchResponse,
+  // Long transcryption request/response types
+  LongTranscryptionRequest,
+  LongTranscryptionResponse,
+  LongTranscryptionBatchRequest,
+  LongTranscryptionBatchResponse,
+  // JSON transcryption request/response types
+  JsonTranscryptionRequest,
+  JsonTranscryptionResponse,
+  JsonTranscryptionBatchRequest,
+  JsonTranscryptionBatchResponse,
+  // Runtime data types
+  EncryptedData,
+  LongEncryptedData,
+  // Union types for polymorphic API
+  type AnyEncryptedPseudonym,
+  type AnyEncryptedAttribute,
+  type AnyEncryptedData,
+  // Type guards
+  isLongEncryptedPseudonym,
+  isLongEncryptedAttribute,
+  isEncryptedPEPJSONValue,
+  isLongEncryptedData,
 } from "./messages.js";
