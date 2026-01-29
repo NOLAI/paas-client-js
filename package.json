@@ -1,6 +1,6 @@
 {
   "name": "@nolai/paas-client",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "PEP Authorization API Service client",
   "repository": {
     "type": "git",
@@ -62,6 +62,6 @@
     "typescript-eslint": "^8.52.0"
   },
   "dependencies": {
-    "@nolai/libpep-wasm": "^0.10.0"
+    "@nolai/libpep-wasm": "^0.10"
   }
 }

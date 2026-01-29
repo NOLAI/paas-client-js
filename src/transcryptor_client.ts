@@ -358,7 +358,7 @@ export class TranscryptorClient {
       // Check version compatibility
       const clientVersion = {
         // eslint-disable-next-line camelcase
-        protocol_version: "0.10.0",
+        protocol_version: "0.10.1",
         // eslint-disable-next-line camelcase
         min_supported_version: "0.10.0",
       } as VersionInfo;
