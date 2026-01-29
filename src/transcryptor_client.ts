@@ -393,10 +393,26 @@ export class TranscryptorClient {
     serverVersion: VersionInfo,
     clientVersion: VersionInfo,
   ): boolean {
-    // Compare semantic versions - this is a simplified implementation
+    const compare = (v1: string, v2: string): number => {
+      const p1 = v1.split(".").map(Number);
+      const p2 = v2.split(".").map(Number);
+
+      for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
+        const diff = (p1[i] || 0) - (p2[i] || 0);
+        if (diff !== 0) return diff;
+      }
+      return 0;
+    };
+
     return (
-      serverVersion.protocol_version >= clientVersion.min_supported_version &&
-      clientVersion.protocol_version >= serverVersion.min_supported_version
+      compare(
+        serverVersion.protocol_version,
+        clientVersion.min_supported_version,
+      ) >= 0 &&
+      compare(
+        clientVersion.protocol_version,
+        serverVersion.min_supported_version,
+      ) >= 0
     );
   }
 
