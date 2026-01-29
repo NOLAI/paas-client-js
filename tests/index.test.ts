@@ -32,14 +32,15 @@ import { http } from "msw";
 const config: PAASConfig = {
   // eslint-disable-next-line camelcase
   blinded_global_keys: {
-      pseudonym:
+    pseudonym:
       "6cc6d8c611e2ce3ab06c2328954726d50505419d92160bb21e128fd49397940d",
-      attribute:
+    attribute:
       "d92ff4a5a268cf38a0d1478e56007987dc339af1356afaf606fc55845abb2a03",
-},
+  },
   // eslint-disable-next-line camelcase
   global_public_keys: {
-    pseudonym: "c49a19c142ee9c03624bdb4ee33e3072ab1fb9a10a5586c8c6001ebf7e72531c",
+    pseudonym:
+      "c49a19c142ee9c03624bdb4ee33e3072ab1fb9a10a5586c8c6001ebf7e72531c",
     attribute:
       "94169b3b23113849006b385e568a916be16d91f5869ff9b01bd14ca41e79a848",
   },
@@ -68,7 +69,7 @@ server.use(
         // eslint-disable-next-line camelcase
         session_id: "test_session_1",
         // eslint-disable-next-line camelcase
-          session_key_shares: {
+        session_key_shares: {
           pseudonym:
             "5f5289d6909083257b9372c362a1905a0f0370181c5b75af812815513edcda0a",
           attribute:

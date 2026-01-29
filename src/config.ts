@@ -1,4 +1,3 @@
-
 /**
  * Configuration for a single transcryptor
  */
@@ -20,12 +19,12 @@ export class TranscryptorConfig {
  */
 export interface PAASConfig {
   blinded_global_keys: {
-    pseudonym: string,
-    attribute: string
+    pseudonym: string;
+    attribute: string;
   };
   global_public_keys: {
-    pseudonym: string,
-    attribute: string
+    pseudonym: string;
+    attribute: string;
   };
   transcryptors: TranscryptorConfig[];
 }

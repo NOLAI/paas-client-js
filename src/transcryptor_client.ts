@@ -431,12 +431,14 @@ export class TranscryptorClient {
       }
 
       if (
-          (clientsideConfig.blinded_global_keys.attribute !==
-          config.blinded_global_keys.attribute )||
-          (clientsideConfig.blinded_global_keys.pseudonym !==
-          config.blinded_global_keys.pseudonym) ||
-          (clientsideConfig.global_public_keys.attribute !== config.global_public_keys.attribute) ||
-          (clientsideConfig.global_public_keys.pseudonym !== config.global_public_keys.pseudonym)
+        clientsideConfig.blinded_global_keys.attribute !==
+          config.blinded_global_keys.attribute ||
+        clientsideConfig.blinded_global_keys.pseudonym !==
+          config.blinded_global_keys.pseudonym ||
+        clientsideConfig.global_public_keys.attribute !==
+          config.global_public_keys.attribute ||
+        clientsideConfig.global_public_keys.pseudonym !==
+          config.global_public_keys.pseudonym
       ) {
         throw PseudonymServiceError.inconsistentConfig(
           transcryptorConfig.system_id,
@@ -476,8 +478,12 @@ export class TranscryptorClient {
 
       this.sessionId = sessionData.session_id;
       this.keyShares = new SessionKeyShares(
-        PseudonymSessionKeyShare.fromHex(sessionData.session_key_shares.pseudonym),
-        AttributeSessionKeyShare.fromHex(sessionData.session_key_shares.attribute),
+        PseudonymSessionKeyShare.fromHex(
+          sessionData.session_key_shares.pseudonym,
+        ),
+        AttributeSessionKeyShare.fromHex(
+          sessionData.session_key_shares.attribute,
+        ),
       );
 
       return {
