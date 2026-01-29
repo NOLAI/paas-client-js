@@ -1,6 +1,6 @@
 {
   "name": "@nolai/paas-client",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "description": "PEP Authorization API Service client",
   "repository": {
     "type": "git",

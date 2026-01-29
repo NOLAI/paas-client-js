@@ -601,8 +601,7 @@ export class TranscryptorClient {
         : "/pseudonymize/pseudonym";
 
       const request: PseudonymizationRequest | LongPseudonymizationRequest = {
-        // eslint-disable-next-line camelcase
-        encrypted_pseudonym: isLong
+        encrypted: isLong
           ? (encryptedPseudonym as LongEncryptedPseudonym).serialize()
           : (encryptedPseudonym as EncryptedPseudonym).toBase64(),
         // eslint-disable-next-line camelcase
@@ -630,11 +629,9 @@ export class TranscryptorClient {
       >(response);
 
       if (isLong) {
-        return LongEncryptedPseudonym.deserialize(
-          data.encrypted_pseudonym,
-        ) as T;
+        return LongEncryptedPseudonym.deserialize(data.result) as T;
       }
-      return EncryptedPseudonym.fromBase64(data.encrypted_pseudonym) as T;
+      return EncryptedPseudonym.fromBase64(data.result) as T;
     } catch (error) {
       if (error instanceof TranscryptorError) {
         throw error;
@@ -669,8 +666,7 @@ export class TranscryptorClient {
       const request:
         | PseudonymizationBatchRequest
         | LongPseudonymizationBatchRequest = {
-        // eslint-disable-next-line camelcase
-        encrypted_pseudonyms: encryptedPseudonyms.map((p) =>
+        encrypted: encryptedPseudonyms.map((p) =>
           isLong
             ? (p as LongEncryptedPseudonym).serialize()
             : (p as EncryptedPseudonym).toBase64(),
@@ -700,13 +696,11 @@ export class TranscryptorClient {
       >(response);
 
       if (isLong) {
-        return data.encrypted_pseudonyms.map(
+        return data.result.map(
           (p) => LongEncryptedPseudonym.deserialize(p) as T,
         );
       }
-      return data.encrypted_pseudonyms.map(
-        (p) => EncryptedPseudonym.fromBase64(p) as T,
-      );
+      return data.result.map((p) => EncryptedPseudonym.fromBase64(p) as T);
     } catch (error) {
       if (error instanceof TranscryptorError) {
         throw error;
@@ -736,8 +730,7 @@ export class TranscryptorClient {
       const endpoint = isLong ? "/rekey/long_attribute" : "/rekey/attribute";
 
       const request: RekeyRequest | LongRekeyRequest = {
-        // eslint-disable-next-line camelcase
-        encrypted_attribute: isLong
+        encrypted: isLong
           ? (encryptedAttribute as LongEncryptedAttribute).serialize()
           : (encryptedAttribute as EncryptedAttribute).toBase64(),
         // eslint-disable-next-line camelcase
@@ -761,11 +754,9 @@ export class TranscryptorClient {
       >(response);
 
       if (isLong) {
-        return LongEncryptedAttribute.deserialize(
-          data.encrypted_attribute,
-        ) as T;
+        return LongEncryptedAttribute.deserialize(data.result) as T;
       }
-      return EncryptedAttribute.fromBase64(data.encrypted_attribute) as T;
+      return EncryptedAttribute.fromBase64(data.result) as T;
     } catch (error) {
       if (error instanceof TranscryptorError) {
         throw error;
@@ -796,8 +787,7 @@ export class TranscryptorClient {
         : "/rekey_batch/attribute";
 
       const request: RekeyBatchRequest | LongRekeyBatchRequest = {
-        // eslint-disable-next-line camelcase
-        encrypted_attributes: encryptedAttributes.map((a) =>
+        encrypted: encryptedAttributes.map((a) =>
           isLong
             ? (a as LongEncryptedAttribute).serialize()
             : (a as EncryptedAttribute).toBase64(),
@@ -823,13 +813,11 @@ export class TranscryptorClient {
       >(response);
 
       if (isLong) {
-        return data.encrypted_attributes.map(
+        return data.result.map(
           (a) => LongEncryptedAttribute.deserialize(a) as T,
         );
       }
-      return data.encrypted_attributes.map(
-        (a) => EncryptedAttribute.fromBase64(a) as T,
-      );
+      return data.result.map((a) => EncryptedAttribute.fromBase64(a) as T);
     } catch (error) {
       if (error instanceof TranscryptorError) {
         throw error;
@@ -860,7 +848,7 @@ export class TranscryptorClient {
       // Determine endpoint and serialize based on data type
       if (isEncryptedPEPJSONValue(encrypted)) {
         const request: JsonTranscryptionRequest = {
-          encrypted: encrypted.toJSON(),
+          encrypted: JSON.parse(encrypted.toJSON()),
           // eslint-disable-next-line camelcase
           domain_from: domainFrom,
           // eslint-disable-next-line camelcase
@@ -883,7 +871,7 @@ export class TranscryptorClient {
 
         const data =
           await this.processResponse<JsonTranscryptionResponse>(response);
-        return EncryptedPEPJSONValue.fromJSON(data.encrypted) as T;
+        return EncryptedPEPJSONValue.fromJSON(JSON.stringify(data.result)) as T;
       } else if (isLongEncryptedData(encrypted)) {
         const d = encrypted as LongEncryptedData;
         const request: LongTranscryptionRequest = {
@@ -915,11 +903,11 @@ export class TranscryptorClient {
           await this.processResponse<LongTranscryptionResponse>(response);
         return {
           // eslint-disable-next-line camelcase
-          encrypted_pseudonym: data.encrypted[0].map((p) =>
+          encrypted_pseudonym: data.result[0].map((p) =>
             LongEncryptedPseudonym.deserialize(p),
           ),
           // eslint-disable-next-line camelcase
-          encrypted_attribute: data.encrypted[1].map((a) =>
+          encrypted_attribute: data.result[1].map((a) =>
             LongEncryptedAttribute.deserialize(a),
           ),
         } as T;
@@ -954,11 +942,11 @@ export class TranscryptorClient {
           await this.processResponse<TranscryptionResponse>(response);
         return {
           // eslint-disable-next-line camelcase
-          encrypted_pseudonym: data.encrypted[0].map((p) =>
+          encrypted_pseudonym: data.result[0].map((p) =>
             EncryptedPseudonym.fromBase64(p),
           ),
           // eslint-disable-next-line camelcase
-          encrypted_attribute: data.encrypted[1].map((a) =>
+          encrypted_attribute: data.result[1].map((a) =>
             EncryptedAttribute.fromBase64(a),
           ),
         } as T;
@@ -994,7 +982,7 @@ export class TranscryptorClient {
       if (isEncryptedPEPJSONValue(encrypted[0])) {
         const request: JsonTranscryptionBatchRequest = {
           encrypted: (encrypted as EncryptedPEPJSONValue[]).map((e) =>
-            e.toJSON(),
+            JSON.parse(e.toJSON()),
           ),
           // eslint-disable-next-line camelcase
           domain_from: domainFrom,
@@ -1018,8 +1006,8 @@ export class TranscryptorClient {
 
         const data =
           await this.processResponse<JsonTranscryptionBatchResponse>(response);
-        return data.encrypted.map(
-          (e) => EncryptedPEPJSONValue.fromJSON(e) as T,
+        return data.result.map(
+          (e) => EncryptedPEPJSONValue.fromJSON(JSON.stringify(e)) as T,
         );
       } else if (isLongEncryptedData(encrypted[0])) {
         const request: LongTranscryptionBatchRequest = {
@@ -1052,7 +1040,7 @@ export class TranscryptorClient {
 
         const data =
           await this.processResponse<LongTranscryptionBatchResponse>(response);
-        return data.encrypted.map(
+        return data.result.map(
           (e) =>
             ({
               // eslint-disable-next-line camelcase
@@ -1093,7 +1081,7 @@ export class TranscryptorClient {
 
         const data =
           await this.processResponse<TranscryptionBatchResponse>(response);
-        return data.encrypted.map(
+        return data.result.map(
           (e) =>
             ({
               // eslint-disable-next-line camelcase

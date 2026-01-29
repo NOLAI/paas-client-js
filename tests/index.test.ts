@@ -113,7 +113,7 @@ server.use(
       expect(authHeader).toBe("Bearer test_token_1");
 
       const body = await request.json();
-      expect(body).toHaveProperty("encrypted_pseudonym");
+      expect(body).toHaveProperty("encrypted");
       expect(body).toHaveProperty("domain_from", "domain1");
       expect(body).toHaveProperty("domain_to", "domain2");
       expect(body).toHaveProperty("session_from", "session_1");
@@ -121,8 +121,7 @@ server.use(
 
       return new Response(
         JSON.stringify({
-          // eslint-disable-next-line camelcase
-          encrypted_pseudonym:
+          result:
             "gqmiHiFA8dMdNtbCgsJ-EEfT9fjTV91BrfcHKN57e2vaLR2_UJEVExd6o9tdZg7vKGQklYZwV3REOaOQedKtUA==",
         }),
         {
@@ -140,7 +139,7 @@ server.use(
       expect(authHeader).toBe("Bearer test_token_2");
 
       const body = await request.json();
-      expect(body).toHaveProperty("encrypted_pseudonym");
+      expect(body).toHaveProperty("encrypted");
       expect(body).toHaveProperty("domain_from", "domain1");
       expect(body).toHaveProperty("domain_to", "domain2");
       expect(body).toHaveProperty("session_from", "session_2");
@@ -148,8 +147,7 @@ server.use(
 
       return new Response(
         JSON.stringify({
-          // eslint-disable-next-line camelcase
-          encrypted_pseudonym:
+          result:
             "gqmiHiFA8dMdNtbCgsJ-EEfT9fjTV91BrfcHKN57e2vaLR2_UJEVExd6o9tdZg7vKGQklYZwV3REOaOQedKtUA==",
         }),
         {

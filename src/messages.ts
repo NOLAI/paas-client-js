@@ -75,7 +75,7 @@ export interface EndSessionRequest {
  * Request to pseudonymize a single encrypted pseudonym (Normal variant)
  */
 export interface PseudonymizationRequest {
-  encrypted_pseudonym: string; // base64-encoded EncryptedPseudonym
+  encrypted: string; // base64-encoded EncryptedPseudonym
   domain_from: string;
   domain_to: string;
   session_from: string;
@@ -86,14 +86,14 @@ export interface PseudonymizationRequest {
  * Response from pseudonymizing an encrypted pseudonym (Normal variant)
  */
 export interface PseudonymizationResponse {
-  encrypted_pseudonym: string; // base64-encoded EncryptedPseudonym
+  result: string; // base64-encoded EncryptedPseudonym
 }
 
 /**
  * Request to pseudonymize a single long encrypted pseudonym
  */
 export interface LongPseudonymizationRequest {
-  encrypted_pseudonym: string; // pipe-delimited base64 LongEncryptedPseudonym
+  encrypted: string; // pipe-delimited base64 LongEncryptedPseudonym
   domain_from: string;
   domain_to: string;
   session_from: string;
@@ -104,14 +104,14 @@ export interface LongPseudonymizationRequest {
  * Response from pseudonymizing a long encrypted pseudonym
  */
 export interface LongPseudonymizationResponse {
-  encrypted_pseudonym: string; // pipe-delimited base64 LongEncryptedPseudonym
+  result: string; // pipe-delimited base64 LongEncryptedPseudonym
 }
 
 /**
  * Request to pseudonymize a batch of encrypted pseudonyms (Normal variant)
  */
 export interface PseudonymizationBatchRequest {
-  encrypted_pseudonyms: string[]; // base64-encoded EncryptedPseudonyms
+  encrypted: string[]; // base64-encoded EncryptedPseudonyms
   domain_from: string;
   domain_to: string;
   session_from: string;
@@ -122,14 +122,14 @@ export interface PseudonymizationBatchRequest {
  * Response from pseudonymizing a batch of encrypted pseudonyms (Normal variant)
  */
 export interface PseudonymizationBatchResponse {
-  encrypted_pseudonyms: string[]; // base64-encoded EncryptedPseudonyms
+  result: string[]; // base64-encoded EncryptedPseudonyms
 }
 
 /**
  * Request to pseudonymize a batch of long encrypted pseudonyms
  */
 export interface LongPseudonymizationBatchRequest {
-  encrypted_pseudonyms: string[]; // pipe-delimited base64 LongEncryptedPseudonyms
+  encrypted: string[]; // pipe-delimited base64 LongEncryptedPseudonyms
   domain_from: string;
   domain_to: string;
   session_from: string;
@@ -140,7 +140,7 @@ export interface LongPseudonymizationBatchRequest {
  * Response from pseudonymizing a batch of long encrypted pseudonyms
  */
 export interface LongPseudonymizationBatchResponse {
-  encrypted_pseudonyms: string[]; // pipe-delimited base64 LongEncryptedPseudonyms
+  result: string[]; // pipe-delimited base64 LongEncryptedPseudonyms
 }
 
 // =============================================================================
@@ -151,7 +151,7 @@ export interface LongPseudonymizationBatchResponse {
  * Request to rekey an encrypted attribute (Normal variant)
  */
 export interface RekeyRequest {
-  encrypted_attribute: string; // base64-encoded EncryptedAttribute
+  encrypted: string; // base64-encoded EncryptedAttribute
   session_from: string;
   session_to: string;
 }
@@ -160,14 +160,14 @@ export interface RekeyRequest {
  * Response from rekeying an encrypted attribute (Normal variant)
  */
 export interface RekeyResponse {
-  encrypted_attribute: string; // base64-encoded EncryptedAttribute
+  result: string; // base64-encoded EncryptedAttribute
 }
 
 /**
  * Request to rekey a long encrypted attribute
  */
 export interface LongRekeyRequest {
-  encrypted_attribute: string; // pipe-delimited base64 LongEncryptedAttribute
+  encrypted: string; // pipe-delimited base64 LongEncryptedAttribute
   session_from: string;
   session_to: string;
 }
@@ -176,14 +176,14 @@ export interface LongRekeyRequest {
  * Response from rekeying a long encrypted attribute
  */
 export interface LongRekeyResponse {
-  encrypted_attribute: string; // pipe-delimited base64 LongEncryptedAttribute
+  result: string; // pipe-delimited base64 LongEncryptedAttribute
 }
 
 /**
  * Request to rekey a batch of encrypted attributes (Normal variant)
  */
 export interface RekeyBatchRequest {
-  encrypted_attributes: string[]; // base64-encoded EncryptedAttributes
+  encrypted: string[]; // base64-encoded EncryptedAttributes
   session_from: string;
   session_to: string;
 }
@@ -192,14 +192,14 @@ export interface RekeyBatchRequest {
  * Response from rekeying a batch of encrypted attributes (Normal variant)
  */
 export interface RekeyBatchResponse {
-  encrypted_attributes: string[]; // base64-encoded EncryptedAttributes
+  result: string[]; // base64-encoded EncryptedAttributes
 }
 
 /**
  * Request to rekey a batch of long encrypted attributes
  */
 export interface LongRekeyBatchRequest {
-  encrypted_attributes: string[]; // pipe-delimited base64 LongEncryptedAttributes
+  encrypted: string[]; // pipe-delimited base64 LongEncryptedAttributes
   session_from: string;
   session_to: string;
 }
@@ -208,7 +208,7 @@ export interface LongRekeyBatchRequest {
  * Response from rekeying a batch of long encrypted attributes
  */
 export interface LongRekeyBatchResponse {
-  encrypted_attributes: string[]; // pipe-delimited base64 LongEncryptedAttributes
+  result: string[]; // pipe-delimited base64 LongEncryptedAttributes
 }
 
 // =============================================================================
@@ -230,7 +230,7 @@ export interface TranscryptionRequest {
  * Response from transcrypting encrypted data (Normal variant)
  */
 export interface TranscryptionResponse {
-  encrypted: EncryptedDataJson; // [pseudonyms[], attributes[]]
+  result: EncryptedDataJson; // [pseudonyms[], attributes[]]
 }
 
 /**
@@ -248,7 +248,7 @@ export interface LongTranscryptionRequest {
  * Response from transcrypting long encrypted data
  */
 export interface LongTranscryptionResponse {
-  encrypted: EncryptedDataJson; // [long_pseudonyms[], long_attributes[]]
+  result: EncryptedDataJson; // [long_pseudonyms[], long_attributes[]]
 }
 
 /**
@@ -266,7 +266,7 @@ export interface TranscryptionBatchRequest {
  * Response from transcrypting a batch of encrypted data (Normal variant)
  */
 export interface TranscryptionBatchResponse {
-  encrypted: EncryptedDataJson[]; // Array of [pseudonyms[], attributes[]]
+  result: EncryptedDataJson[]; // Array of [pseudonyms[], attributes[]]
 }
 
 /**
@@ -284,14 +284,14 @@ export interface LongTranscryptionBatchRequest {
  * Response from transcrypting a batch of long encrypted data
  */
 export interface LongTranscryptionBatchResponse {
-  encrypted: EncryptedDataJson[]; // Array of [long_pseudonyms[], long_attributes[]]
+  result: EncryptedDataJson[]; // Array of [long_pseudonyms[], long_attributes[]]
 }
 
 /**
  * Request to transcrypt JSON encrypted data
  */
 export interface JsonTranscryptionRequest {
-  encrypted: string; // JSON-serialized EncryptedPEPJSONValue
+  encrypted: unknown; // EncryptedPEPJSONValue as JSON object
   domain_from: string;
   domain_to: string;
   session_from: string;
@@ -302,14 +302,14 @@ export interface JsonTranscryptionRequest {
  * Response from transcrypting JSON encrypted data
  */
 export interface JsonTranscryptionResponse {
-  encrypted: string; // JSON-serialized EncryptedPEPJSONValue
+  result: unknown; // EncryptedPEPJSONValue as JSON object
 }
 
 /**
  * Request to transcrypt a batch of JSON encrypted data
  */
 export interface JsonTranscryptionBatchRequest {
-  encrypted: string[]; // JSON-serialized EncryptedPEPJSONValues
+  encrypted: unknown[]; // EncryptedPEPJSONValues as JSON objects
   domain_from: string;
   domain_to: string;
   session_from: string;
@@ -320,7 +320,7 @@ export interface JsonTranscryptionBatchRequest {
  * Response from transcrypting a batch of JSON encrypted data
  */
 export interface JsonTranscryptionBatchResponse {
-  encrypted: string[]; // JSON-serialized EncryptedPEPJSONValues
+  result: unknown[]; // EncryptedPEPJSONValues as JSON objects
 }
 
 // =============================================================================
