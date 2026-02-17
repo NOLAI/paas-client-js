@@ -790,9 +790,10 @@ export class PseudonymService {
       encrypted = this.pepCryptoClient.encryptLongPseudonym(message);
     } else if (message instanceof LongAttribute) {
       encrypted = this.pepCryptoClient.encryptLongData(message);
+    } else if (message instanceof PEPJSONValue) {
+      encrypted = this.pepCryptoClient.encryptJSON(message);
     } else {
-      // PEPJSONValue
-      encrypted = this.pepCryptoClient.encryptJSON(message as PEPJSONValue);
+        throw new Error("Unsupported message type for encryption");
     }
 
     return [encrypted, this.getCurrentSessions()];
@@ -815,7 +816,7 @@ export class PseudonymService {
     messages: LongAttribute[],
   ): Promise<[LongEncryptedAttribute[], EncryptionContexts]>;
   public async encryptBatch(
-    messages: Pseudonym[] | Attribute[] | LongPseudonym[] | LongAttribute[],
+    messages: Pseudonym[] | Attribute[] | LongPseudonym[] | LongAttribute[] | PEPJSONValue[],
   ): Promise<
     [
       (
@@ -823,6 +824,7 @@ export class PseudonymService {
         | EncryptedAttribute[]
         | LongEncryptedPseudonym[]
         | LongEncryptedAttribute[]
+        | EncryptedPEPJSONValue[]
       ),
       EncryptionContexts,
     ]
@@ -844,7 +846,8 @@ export class PseudonymService {
       | EncryptedPseudonym[]
       | EncryptedAttribute[]
       | LongEncryptedPseudonym[]
-      | LongEncryptedAttribute[];
+      | LongEncryptedAttribute[]
+      | EncryptedPEPJSONValue[];
 
     if (first instanceof Pseudonym) {
       encrypted = this.pepCryptoClient.encryptPseudonymBatch(
@@ -858,10 +861,16 @@ export class PseudonymService {
       encrypted = this.pepCryptoClient.encryptLongPseudonymBatch(
         messages as LongPseudonym[],
       );
-    } else {
+    } else if (first instanceof LongAttribute) {
       encrypted = this.pepCryptoClient.encryptLongDataBatch(
-        messages as LongAttribute[],
+          messages as LongAttribute[],
       );
+    } else if (first instanceof PEPJSONValue) {
+      encrypted = this.pepCryptoClient.encryptJSONBatch(
+          messages as PEPJSONValue[],
+      );
+    } else {
+        throw new Error("Unsupported message type for batch encryption");
     }
 
     return [encrypted, this.getCurrentSessions()];
@@ -917,11 +926,12 @@ export class PseudonymService {
       return this.pepCryptoClient.decryptLongPseudonym(encrypted);
     } else if (encrypted instanceof LongEncryptedAttribute) {
       return this.pepCryptoClient.decryptLongData(encrypted);
-    } else {
-      // EncryptedPEPJSONValue
+    } else if (encrypted instanceof EncryptedPEPJSONValue) {
       return this.pepCryptoClient.decryptJSON(
-        encrypted as EncryptedPEPJSONValue,
+        encrypted,
       );
+    } else {
+        throw new Error("Unsupported message type for decryption");
     }
   }
 
@@ -938,8 +948,9 @@ export class PseudonymService {
       | EncryptedPseudonym[]
       | EncryptedAttribute[]
       | LongEncryptedPseudonym[]
-      | LongEncryptedAttribute[],
-  ): Pseudonym[] | Attribute[] | LongPseudonym[] | LongAttribute[] {
+      | LongEncryptedAttribute[]
+      | EncryptedPEPJSONValue[],
+  ): Pseudonym[] | Attribute[] | LongPseudonym[] | LongAttribute[] | PEPJSONValue[] {
     if (!this.pepCryptoClient) {
       throw PseudonymServiceError.uninitializedPEPClient();
     }
@@ -962,10 +973,16 @@ export class PseudonymService {
       return this.pepCryptoClient.decryptLongPseudonymBatch(
         encrypted as LongEncryptedPseudonym[],
       );
-    } else {
+    } else if (first instanceof LongEncryptedAttribute) {
       return this.pepCryptoClient.decryptLongDataBatch(
         encrypted as LongEncryptedAttribute[],
       );
+    } else if (first instanceof EncryptedPEPJSONValue) {
+      return this.pepCryptoClient.decryptJSONBatch(
+        encrypted as EncryptedPEPJSONValue[],
+      );
+    } else {
+        throw new Error("Unsupported message type for batch decryption");
     }
   }
 }
